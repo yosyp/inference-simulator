@@ -95,6 +95,8 @@ describe(
       // Compute until the entry point is playable.
       while (computedTo(entry) <= entry && transport.run(1) > 0);
       expect(computedTo(entry)).toBeGreaterThan(entry);
+      // 'ready' (the tracked analyst) follows the first frame's chunk within a few tasks.
+      transport.run(20);
       expect(store.getState().trackedAnalyst).not.toBeNull();
 
       // A few frames at the entry speed: dots, and a detail request answered for this 'all' run.

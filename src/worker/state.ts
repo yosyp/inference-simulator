@@ -25,8 +25,8 @@ export interface Setup {
   /** K28: 'all' for 1–2 replicas, else 'tracked'. */
   detail: 'all' | 'tracked';
   grid: Grid;
-  /** sessionPlan per day under the baseline patches (the ready message; reused on reset). */
-  plans: SessionSummary[][];
+  /** sessionPlan per day under the baseline patches, for the next ready message; null until computed. */
+  plans: (SessionSummary[] | null)[];
   /** The scenario rule's analyst. */
   initialTracked: AnalystId | null;
 }
@@ -88,12 +88,14 @@ export interface HostRun {
     tracked: AnalystId | null;
     run: CoreDayRun;
   } | null;
+  /** 'ready' is owed once the focus day has streamed past this time (host.ts); null once sent. */
+  readyAfterMs: SimMs | null;
   failed: boolean;
 }
 
 export interface Host {
   readonly engine: AssembledEngine;
-  post(msg: WorkerToMain, transfer?: Transferable[]): void;
+  post(msg: WorkerToMain, transfer?: ArrayBuffer[]): void;
   /** Byte budget for checkpoints of days other than the focus day. */
   readonly budgetBytes: number;
   setup: Setup | null;
@@ -133,6 +135,7 @@ export function newRun(runId: number, setup: Setup, focusDay: DayIndex, focusMs:
     details: [],
     traces: [],
     detailCache: null,
+    readyAfterMs: focusMs,
     failed: false,
   };
 }

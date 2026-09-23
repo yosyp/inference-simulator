@@ -212,12 +212,13 @@ describe('engine host: focus and reset', { timeout: 60_000 }, () => {
   it('reset starts a new run: ready again, new runId, and old-run messages are ignored', () => {
     const t = createTestHost();
     t.send(initMsg(scenarioOf(config), calibration, FOCUS));
-    t.runAll(25);
-    const firstReady = t.out[0] as Msg<'ready'>;
+    t.runAll(60);
+    const firstReady = ofType(t.out, 'ready')[0]!;
+    expect(firstReady.runId).toBe(1);
     const before = t.out.length;
     t.send({ type: 'reset', runId: 2, focusMs: FOCUS });
-    const ready = t.out[before] as Msg<'ready'>;
-    expect(ready.type).toBe('ready');
+    t.runAll(60);
+    const ready = ofType(t.out.slice(before), 'ready')[0]!;
     expect(ready.runId).toBe(2);
     expect(ready.trackedAnalyst).toBe(firstReady.trackedAnalyst);
     expect(ready.sessionsByDay).toEqual(firstReady.sessionsByDay);

@@ -4,6 +4,12 @@
 /** Runs `task` later, after pending messages get a chance to run. */
 export type Schedule = (task: () => void) => void;
 
+interface Port {
+  onmessage: ((e: unknown) => void) | null;
+  postMessage(message: unknown): void;
+  close(): void;
+}
+
 export interface MacrotaskScheduler {
   schedule: Schedule;
   /** Releases the channel (Node keeps a process alive while a port is open). */
@@ -24,7 +30,8 @@ export function macrotaskScheduler(): MacrotaskScheduler {
       close: () => {},
     };
   }
-  const channel = new MessageChannel();
+  // Typed structurally: the worker's lib (WebWorker) and Node's types disagree about MessagePort.
+  const channel = new MessageChannel() as unknown as { port1: Port; port2: Port };
   const tasks: (() => void)[] = [];
   channel.port1.onmessage = () => {
     const task = tasks.shift();

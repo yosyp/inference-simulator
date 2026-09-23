@@ -13,10 +13,16 @@
 //   5. the other days' streams: later days first, then earlier ones;
 //   6. the other days' traces, in the same order.
 //
+// Ready. The tracked analyst is picked at init from the moment day's session plan alone. The
+// other days' plans (sessionsByDay; about 0.2 s each at Server B knee load, and 250k objects to
+// clone) are computed right after the chunk that covers the focus time, and 'ready' follows
+// then, so they don't delay the first frame (P1). The tab opens paused, so the tracked analyst
+// appears before anyone presses Play. Reset does the same.
+//
 // Forks follow the cut rule in protocol.ts: nothing before cutMs is sent again. Messages carry the
 // current runId and revision; everything posted after a fork was computed under it.
 
-import type { AnalystId, Patch } from '../engine/api.ts';
+import type { AnalystId, Patch, SessionSummary } from '../engine/api.ts';
 import {
   detailFor,
   engine as defaultEngine,
@@ -40,13 +46,16 @@ import type { Schedule } from './scheduler.ts';
 import { dayOrder, newRun, rebind, type Active, type Host, type Setup } from './state.ts';
 
 export interface EngineHostOptions {
-  post(msg: WorkerToMain, transfer: Transferable[]): void;
+  post(msg: WorkerToMain, transfer: ArrayBuffer[]): void;
   schedule: Schedule;
   /** Wall clock for slicing. Default performance.now. */
   now?: () => number;
   /** Wall time per slice before yielding; at least one unit runs. Default 16 ms. */
   sliceMs?: number;
-  /** Byte budget for checkpoints of non-focus days. Default 64 MiB. */
+  /**
+   * Byte budget for hourly checkpoints on days other than the focus day; the days nearest the
+   * focus keep theirs. Default 16 MiB: every day of a 1–2 replica run, a few Server B hours.
+   */
   checkpointBudgetBytes?: number;
   grid?: GridOptions;
   engine?: AssembledEngine;
@@ -58,7 +67,12 @@ export interface EngineHost {
   dispose(): void;
 }
 
-export const DEFAULT_CHECKPOINT_BUDGET_BYTES = 64 * 1024 * 1024;
+/**
+ * P4 (00-build §8) leaves about 250 MB for main thread plus worker after a 150 MB page baseline.
+ * At Server B knee load the results store takes about 70 MB a week and the focus day's 15-minute
+ * checkpoints about 145 MB (3.6 MB each with E4 as merged), so other days get what is left.
+ */
+export const DEFAULT_CHECKPOINT_BUDGET_BYTES = 16 * 1024 * 1024;
 
 function clampWeek(ms: SimMs): SimMs {
   return Math.min(WEEK_MS - 1, Math.max(0, ms));
@@ -94,9 +108,36 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
 
   // --- Work ---------------------------------------------------------------------------------
 
+  /** Computes one missing session plan per unit; posts 'ready' once all are there. */
+  function stepReady(a: Active): void {
+    const plans = a.setup.plans;
+    const missing = plans.findIndex((p) => p === null);
+    if (missing >= 0) {
+      plans[missing] = planOf(a.setup, missing as DayIndex);
+      return;
+    }
+    postReady(a);
+  }
+
+  function postReady(a: Active): void {
+    a.run.readyAfterMs = null;
+    h.post({
+      type: 'ready',
+      runId: a.run.runId,
+      trackedAnalyst: a.setup.initialTracked,
+      sessionsByDay: a.setup.plans as SessionSummary[][],
+    });
+    // About 20 MB at Server B knee load: not worth keeping for a reset.
+    a.setup.plans = a.setup.plans.map(() => null);
+  }
+
   /** The most urgent unit of work, or null when everything is done. */
   function pick(a: Active): (() => void) | null {
     const r = a.run;
+    if (r.readyAfterMs !== null) {
+      const slot = r.days[dayOf(r.readyAfterMs)]!;
+      if (slot.complete || slot.streamedToMs > r.readyAfterMs) return () => stepReady(a);
+    }
     const job = r.details[0];
     if (job) return () => void (stepDetail(a, job) && r.details.shift());
     const order = dayOrder(r.focusDay);
@@ -148,27 +189,31 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
     const setup = h.setup!;
     const focus = clampWeek(focusMs);
     h.run = newRun(runId, setup, dayOf(focus), focus);
-    h.post({
-      type: 'ready',
-      runId,
-      trackedAnalyst: setup.initialTracked,
-      sessionsByDay: setup.plans,
-    });
+    if (setup.plans.every((p) => p !== null)) postReady(h as Active);
     kick();
+  }
+
+  function planOf(setup: Pick<Setup, 'scenario' | 'calibration'>, day: DayIndex): SessionSummary[] {
+    return h.engine.sessionPlan({
+      config: setup.scenario.config,
+      calibration: setup.calibration,
+      patches: setup.scenario.baselinePatches,
+      day,
+      trackedAnalyst: null,
+      detail: 'tracked',
+    });
   }
 
   function init(scenario: WorkerScenario, calibration: Calibration): Setup {
     const base = { config: scenario.config, calibration, patches: scenario.baselinePatches };
-    const plans = Array.from({ length: WEEK_DAYS }, (_, d) =>
-      h.engine.sessionPlan({
-        ...base,
-        day: d as DayIndex,
-        trackedAnalyst: null,
-        detail: 'tracked',
-      }),
-    );
+    const plans: (SessionSummary[] | null)[] = Array.from({ length: WEEK_DAYS }, () => null);
     const rule = scenario.tracked;
-    const plan = rule.rule === 'spansMoment' ? plans[dayOf(rule.momentMs)] : undefined;
+    let plan: SessionSummary[] | undefined;
+    if (rule.rule === 'spansMoment') {
+      const day = dayOf(rule.momentMs);
+      plan = planOf({ scenario, calibration }, day);
+      plans[day] = plan;
+    }
     return {
       scenario,
       calibration,

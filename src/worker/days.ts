@@ -151,6 +151,8 @@ export function refocus(h: Active, day: DayIndex, atMs: SimMs): void {
     enforceBudget(h);
   }
   r.focusMs = atMs;
+  // 'ready' waits for the frame the main thread is now waiting for.
+  if (r.readyAfterMs !== null) r.readyAfterMs = atMs;
   const slot = r.days[day]!;
   if (slot.streamedToMs <= atMs && !slot.complete) slot.targetMs = atMs;
   slot.densify = slot.streamedToMs > dayStartMs(day) ? { run: null } : null;
