@@ -9,7 +9,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | S1 Scale spike | running | | |
 | E1 Keyed RNG | running | | |
 | E2 Event core | running | | |
-| E3 Cost model | running | | |
+| E3 Cost model | merged | main | Batch-1 TPOT +5% at 8k, +20% at 32k, +77% at 122,880 (K3 holds); TTFT 38 s at 120k. Tab 3 compute-util bound tightened in §7.3. |
 | E4 KV blocks | running | | |
 | E5 Scheduler | todo | | |
 | E6 Load generator | todo | | |
