@@ -1,7 +1,8 @@
 // The toolbar (05 §4, K16): always-visible playback and scenario controls in two rows.
-// Playback: play/pause, speed, jump to the lesson, Reset, and the playhead clock with a
-// buffering indicator. Scenario: the trigger, the named fix (tabs 4 and 6), the Live / High-side
-// toggle, and the parameters drawer toggle.
+// Playback: play/pause, speed, jump to the lesson, Reset, and an end-of-week note. The playhead
+// clock and the buffering indicator live on the week timeline (U5), not here. Scenario: the
+// trigger, the named fix (tabs 4 and 6), the Live / High-side toggle, and the parameters drawer
+// toggle.
 
 import { useCallback } from 'react';
 import type { PatchTemplate, TunableParams } from '../../engine/api.ts';
@@ -22,7 +23,7 @@ import {
   SlidersIcon,
   TriggerIcon,
 } from './icons.tsx';
-import { changesHold, formatClock } from './params.ts';
+import { changesHold } from './params.ts';
 import { SpeedControl } from './SpeedControl.tsx';
 
 export interface ToolbarProps {
@@ -38,17 +39,12 @@ interface View {
   playing: boolean;
   speed: number;
   mode: Mode;
-  buffering: boolean;
   /** The playhead is past Friday's shift, so Play has nothing left to play. */
   ended: boolean;
 }
 
 const sameView = (a: View, b: View) =>
-  a.playing === b.playing &&
-  a.speed === b.speed &&
-  a.mode === b.mode &&
-  a.buffering === b.buffering &&
-  a.ended === b.ended;
+  a.playing === b.playing && a.speed === b.speed && a.mode === b.mode && a.ended === b.ended;
 
 // TODO(copy): the High-side descriptions are orientational; 05 §9 has the full contrast.
 const MODE_OPTIONS: readonly SegmentedOption<Mode>[] = [
@@ -67,7 +63,6 @@ export function Toolbar({ store, scenario, params, onFork, drawer }: ToolbarProp
       playing: s.playing,
       speed: s.speed,
       mode: s.mode,
-      buffering: s.buffering,
       ended: playableAt(s.playheadMs, shift) === null,
     }),
     [shift],
@@ -106,10 +101,9 @@ export function Toolbar({ store, scenario, params, onFork, drawer }: ToolbarProp
           <ResetIcon />
           Reset
         </Button>
-        <div className="ml-auto flex items-center gap-2 pl-2">
-          <PlaybackStatus buffering={view.buffering} ended={view.ended} />
-          <PlayheadClock store={store} />
-        </div>
+        {view.ended && (
+          <span className="ml-auto pl-2 text-xs text-ink-subtle">End of the week</span>
+        )}
       </div>
       <div role="group" aria-label="Scenario" className={rowClass}>
         <Button
@@ -169,30 +163,3 @@ function hint(text: string) {
 }
 
 const rowClass = 'flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1';
-
-function PlaybackStatus({ buffering, ended }: { buffering: boolean; ended: boolean }) {
-  if (ended) return <span className="text-xs text-ink-subtle">End of the week</span>;
-  if (!buffering) return null;
-  return (
-    <span className="flex items-center gap-1 text-xs text-ink-muted">
-      <span
-        aria-hidden
-        className="size-2.5 animate-spin rounded-full border-2 border-border-strong border-t-transparent"
-      />
-      Computing…
-    </span>
-  );
-}
-
-const selectClock = (s: PlaybackState) => formatClock(s.playheadMs);
-
-/** The playhead's simulated day and time. */
-export function PlayheadClock({ store }: { store: PlaybackStore }) {
-  const text = usePlaybackSelector(store, selectClock, { maxHz: 4 });
-  return (
-    <span className="font-mono text-xs text-ink-muted tabular-nums">
-      <span className="sr-only">Playhead </span>
-      {text}
-    </span>
-  );
-}

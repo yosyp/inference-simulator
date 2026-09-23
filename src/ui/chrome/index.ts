@@ -25,7 +25,7 @@ export { SlotPlaceholder } from './SlotPlaceholder.tsx';
 export type { SlotPlaceholderProps } from './SlotPlaceholder.tsx';
 export { SPEED_PRESETS, SpeedControl, speedChoices } from './SpeedControl.tsx';
 export type { SpeedControlProps } from './SpeedControl.tsx';
-export { PlayheadClock, Toolbar } from './Toolbar.tsx';
+export { Toolbar } from './Toolbar.tsx';
 export type { ToolbarProps } from './Toolbar.tsx';
 export { useParamsInEffect, useScenarioRun } from './use-scenario-run.ts';
 export type { AppliedPatches, ScenarioRun } from './use-scenario-run.ts';

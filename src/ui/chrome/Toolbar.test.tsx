@@ -139,17 +139,16 @@ describe('Toolbar', () => {
     });
   });
 
-  it('shows a buffering indicator while the playhead waits for uncomputed time', async () => {
-    const { queue, state, store } = setup();
+  it('leaves the clock and the buffering indicator to the week timeline', () => {
+    const { state } = setup();
     expect(state().buffering).toBe(true);
-    expect(within(playback()).getByText('Computing…')).toBeInTheDocument();
-    act(() => queue.runUntil(() => !store.getState().buffering));
-    await waitFor(() => expect(within(playback()).queryByText('Computing…')).toBeNull());
+    expect(within(playback()).queryByText('Computing…')).toBeNull();
+    expect(within(playback()).queryByText(/\d\d:\d\d/)).toBeNull();
   });
 
-  it('shows the playhead clock and disables Play once the week is over', async () => {
+  it('disables Play once the week is over, and says so', async () => {
     const { store } = setup();
-    expect(within(playback()).getByText('Wed 10:28:00')).toBeInTheDocument();
+    expect(within(playback()).queryByText('End of the week')).toBeNull();
     act(() => store.seek(simMs(4, 17, 30)));
     await waitFor(() => expect(screen.getByRole('button', { name: /^play\b/i })).toBeDisabled());
     expect(within(playback()).getByText('End of the week')).toBeInTheDocument();
