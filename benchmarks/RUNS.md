@@ -13,3 +13,5 @@ during the run window, sampled about every 20 s.
 | Run id | Run | GPU | Status | Wall | Notes |
 |---|---|---|---|---|---|
 | R0-20260923T192925Z | R0 smoke | 0 | complete | 1.3 min | First start on this host, so the compile cache missed. 9,672 blocks × 16 = 154,752 KV tokens; max_num_seqs 256; max_num_batched_tokens 2,048. |
+| R0-20260923T193126Z | R0 | 0, then 1 | complete | 1.4 min | Compile cache hit on both GPUs: 9,929 blocks × 16 = 158,864 KV tokens on each. That is 2.6% more than the smoke run, whose compile cache missed. max_num_seqs 256, max_num_batched_tokens 2,048, chunked prefill and async scheduling on. |
+| R1-20260923T193249Z | R1 | 0 | complete | 19.8 min | 20 points, prefix hits 0, no preemptions. The power cap held for 46% of samples at 2k tokens and 93% at 120k, with mean SM clock 850–1,050 MHz. |
