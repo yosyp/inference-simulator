@@ -1,0 +1,185 @@
+name: Deploy
+
+# A push to prod (a merge or a direct commit) deploys the site
+# (06-deployment §4). The commands follow infra/README.md §6.
+on:
+  push:
+    branches: [prod]
+
+# Nothing by default. Each job asks for what it needs.
+permissions: {}
+
+# Deploys queue and never overlap, and a running deploy is never cancelled: a
+# cancelled apply can leave the Terraform state locked. If several pushes queue
+# up behind a running deploy, GitHub keeps only the newest pending one.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # The same checks as every push (ci.yml), with no AWS access and no id-token.
+  # Dependency install scripts and the build run here, away from the deploy
+  # role. Its verify job uploads the tested build as the `dist` artifact.
+  # `./` resolves to this same commit. (GitHub's newer `$/` form is equivalent
+  # here, but actionlint 1.7.12 rejects it.)
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-24.04
+    # The deploy role's sessions last one hour. A first deploy takes 10 to 20
+    # minutes, most of it certificate validation and distribution creation.
+    timeout-minutes: 60
+    # No `environment:` on this job. It would change the OIDC subject to
+    # ...:environment:<name>, and the deploy role trusts only
+    # ...:ref:refs/heads/prod (K22).
+    permissions:
+      id-token: write # lets any step in this job mint a token for the deploy role
+      contents: read
+    env:
+      AWS_REGION: us-east-1
+      AWS_PAGER: ''
+      TF_IN_AUTOMATION: '1'
+      TF_INPUT: '0'
+    steps:
+      # Every third-party action runs before the AWS credentials exist. After
+      # that, only this file's own commands run.
+      - name: Check out infra/
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download the tested build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist
+
+      - name: Check the build
+        run: |
+          test -f dist/index.html
+          test -d dist/assets
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.10.5
+          # The wrapper adds output that breaks $(terraform output -raw ...).
+          terraform_wrapper: false
+
+      - name: Assume the deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: deploy-${{ github.run_id }}
+          mask-aws-account-id: true
+
+      # The repo is public, so its Actions logs are too. Plan output contains
+      # ARNs; mask the account ID in them. GitHub already masks the secrets'
+      # values, but not substrings of them.
+      - name: Mask the account ID
+        run: |
+          account_id=$(aws sts get-caller-identity --query Account --output text)
+          echo "::add-mask::$account_id"
+
+      - name: Terraform init
+        env:
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+        run: terraform -chdir=infra/site init -backend-config="bucket=$TF_STATE_BUCKET"
+
+      # Plan runs immediately before apply (K20), and apply takes that saved
+      # plan, so it changes only what the log shows.
+      - name: Terraform plan
+        env:
+          TF_VAR_site_domain: ${{ secrets.SITE_DOMAIN }}
+        run: terraform -chdir=infra/site plan -out=tfplan
+
+      - name: Terraform apply
+        run: terraform -chdir=infra/site apply tfplan
+
+      - name: Read Terraform outputs
+        id: tf
+        run: |
+          bucket=$(terraform -chdir=infra/site output -raw site_bucket_name)
+          distribution_id=$(terraform -chdir=infra/site output -raw cloudfront_distribution_id)
+          site_url=$(terraform -chdir=infra/site output -raw site_url)
+          {
+            echo "bucket=$bucket"
+            echo "distribution_id=$distribution_id"
+            echo "site_url=$site_url"
+          } >> "$GITHUB_OUTPUT"
+
+      # Caching (06 §6): hashed assets are immutable; everything else is
+      # revalidated on every request. The cache policy honors each object's
+      # Cache-Control, so these two values are the whole caching design.
+
+      # 1. New hashed assets go up first, so the new index.html never points at
+      #    a file that isn't there yet.
+      - name: Upload hashed assets
+        env:
+          BUCKET: ${{ steps.tf.outputs.bucket }}
+        run: |
+          aws s3 sync dist/assets "s3://$BUCKET/assets" --no-progress \
+            --cache-control "public, max-age=31536000, immutable"
+
+      # 2. Everything else, index.html included. --delete here removes stale
+      #    top-level files but never touches assets/, which --exclude covers.
+      - name: Upload index.html and other files
+        env:
+          BUCKET: ${{ steps.tf.outputs.bucket }}
+        run: |
+          aws s3 sync dist "s3://$BUCKET" --no-progress --exclude "assets/*" --delete \
+            --cache-control "no-cache"
+
+      # 3. Invalidate the entry point under both paths that viewers request.
+      #    Both are no-cache already, so this is a backstop.
+      - name: Invalidate the entry point
+        env:
+          DISTRIBUTION_ID: ${{ steps.tf.outputs.distribution_id }}
+        run: |
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/index.html" "/" --query Invalidation.Id --output text
+
+      # 4. Remove assets the new build no longer references, now that the new
+      #    index.html is live. Step 1 already uploaded the rest, so nothing is
+      #    uploaded again.
+      - name: Remove old assets
+        env:
+          BUCKET: ${{ steps.tf.outputs.bucket }}
+        run: |
+          aws s3 sync dist/assets "s3://$BUCKET/assets" --no-progress --delete \
+            --cache-control "public, max-age=31536000, immutable"
+
+      # The site answers 200 with the response headers policy attached. Retries
+      # cover a first deploy's new DNS records.
+      - name: Check the live site
+        env:
+          SITE_DOMAIN: ${{ secrets.SITE_DOMAIN }}
+        run: |
+          headers="$RUNNER_TEMP/headers.txt"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            status=$(curl -sSI -o /dev/null -D "$headers" -w '%{http_code}' --max-time 20 \
+              "https://$SITE_DOMAIN/") || true
+            if [ "$status" = 200 ] && grep -qi '^content-security-policy:' "$headers"; then
+              echo "The site returns 200 with a Content-Security-Policy header."
+              exit 0
+            fi
+            echo "Attempt $attempt: HTTP ${status:-000}. Retrying in 30 s."
+            sleep 30
+          done
+          echo "::error::The site did not return 200 with a Content-Security-Policy header."
+          cat "$headers" || true
+          exit 1
+
+      - name: Summary
+        env:
+          SITE_URL: ${{ steps.tf.outputs.site_url }}
+        run: |
+          echo "Deployed \`$GITHUB_SHA\` to $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
