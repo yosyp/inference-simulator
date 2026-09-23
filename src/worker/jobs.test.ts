@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { calibration } from '../data/calibration.ts';
 import { runHeadlessDay } from '../engine/headless.ts';
+import { engine } from '../engine/index.ts';
 import { REQUEST_STATE } from '../engine/results.ts';
 import { DAY_MS, simMs, type DayIndex } from '../engine/time.ts';
 import type { WorkerToMain } from './protocol.ts';
@@ -207,6 +208,43 @@ describe('engine host: focus and reset', { timeout: 60_000 }, () => {
     expect(order).toEqual([4, 0, 1, 2, 3]);
     const cut = ofType(after, 'chunk').find((m) => m.chunk.toMs > at)!;
     expect(cut.chunk.toMs).toBe(simMs(4, 9, 8));
+  });
+
+  it("a prefetch streams the next day but keeps the playhead day's 15-minute checkpoints", () => {
+    // A late-day fork on the playhead's day, after a lookahead toward Thursday: which checkpoint
+    // does it restore from?
+    function forkAfter(prefetch: boolean): number | undefined {
+      const restored: number[] = [];
+      const t = createTestHost({
+        engine: {
+          ...engine,
+          restoreDayRun(input, cp) {
+            restored.push(cp.atMs);
+            return engine.restoreDayRun(input, cp);
+          },
+        },
+      });
+      t.send(initMsg(scenarioOf(config), calibration, FOCUS));
+      t.runUntil(() => ofType(t.out, 'dayComplete').length === 1);
+      t.send({ type: 'focus', runId: 1, atMs: simMs(3, 7), prefetch });
+      const before = t.out.length;
+      t.runUntil(() => ofType(t.out.slice(before), 'dayComplete').length === 1);
+      // Thursday streamed next either way.
+      expect(ofType(t.out.slice(before), 'dayComplete')[0]!.day).toBe(3);
+      restored.length = 0;
+      const patch = {
+        kind: 'set',
+        atMs: simMs(2, 16, 40),
+        changes: { loadMultiplier: 2 },
+      } as const;
+      t.send({ type: 'fork', runId: 1, revision: 1, patch });
+      t.runUntil(() => ofType(t.out, 'chunk').some((m) => m.revision === 1));
+      return restored[0];
+    }
+    // Prefetch: Wednesday keeps its 16:30 checkpoint, so the fork replays 10 minutes.
+    expect(forkAfter(true)).toBe(simMs(2, 16, 30));
+    // A plain focus on Thursday thins Wednesday to hourly: the fork replays 40 minutes.
+    expect(forkAfter(false)).toBe(simMs(2, 16));
   });
 
   it('reset starts a new run: ready again, new runId, and old-run messages are ignored', () => {

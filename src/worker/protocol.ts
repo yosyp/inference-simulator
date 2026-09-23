@@ -13,6 +13,12 @@
 // The worker sends `ready` after both `init` and `reset`, and one `detail` reply per requestTag.
 // A `fork` also moves the worker's focus to the fork's day.
 //
+// Focus. The focus day is the playhead's day: it streams first and keeps 15-minute checkpoints, so
+// a fork there replays at most 15 simulated minutes (P2). The main thread sends `focus` whenever
+// the playhead lands on another day and on every seek. A lookahead toward the next uncomputed day
+// sends `focus` with `prefetch: true`: that day streams next, but the focus day stays where it is
+// and keeps its checkpoints. A plain `focus`, a fork, or a reset ends the prefetch.
+//
 // Fork cut rule. A fork at atMs cuts at cutMs = floor(atMs / histBucketMs) × histBucketMs. On the
 // fork's day, the main thread discards buckets starting at or after cutMs, requests whose endMs is
 // at or after cutMs, transitions and replica events at or after cutMs. If the patch is lasting
@@ -52,8 +58,11 @@ export type MainToWorker =
       /** Compute this time's day first, then the rest of the week (K21). */
       focusMs: SimMs;
     }
-  /** The playhead moved; compute its day next and stay ahead of it. */
-  | { type: 'focus'; runId: number; atMs: SimMs }
+  /**
+   * The playhead moved; compute its day next and stay ahead of it. prefetch: the playhead is
+   * still on the focus day; stream atMs's day next without moving the focus.
+   */
+  | { type: 'focus'; runId: number; atMs: SimMs; prefetch?: boolean }
   | { type: 'fork'; runId: number; revision: number; patch: Patch }
   | { type: 'reset'; runId: number; focusMs: SimMs }
   /**

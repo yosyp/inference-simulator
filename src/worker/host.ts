@@ -8,10 +8,14 @@
 // 0.1 s at Server B's peak. Each unit re-picks the most urgent work:
 //   1. detail requests, first come first served;
 //   2. the focus day's stream (the playhead's day, from its morning: K21);
-//   3. the focus day's trace, after a track;
-//   4. the focus day's missing 15-minute checkpoints (densify, S1 §6);
-//   5. the other days' streams: later days first, then earlier ones;
-//   6. the other days' traces, in the same order.
+//   3. the prefetch day's stream (a lookahead focus with prefetch: protocol.ts);
+//   4. the focus day's trace, after a track;
+//   5. the focus day's missing 15-minute checkpoints (densify, S1 §6);
+//   6. the other days' streams: later days first, then earlier ones;
+//   7. the other days' traces, in the same order.
+//
+// A prefetch only reorders streams: the focus day keeps its 15-minute checkpoints, and the
+// prefetch day streams with the other-day policy until a plain focus moves the playhead onto it.
 //
 // Ready. The tracked analyst is picked at init from the moment day's session plan alone, and 'ready'
 // goes out at once, after init and after reset, before the first chunk.
@@ -84,6 +88,8 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
   const sliceMs = options.sliceMs ?? 16;
   let scheduled = false;
   let disposed = false;
+  /** The day a prefetch focus asked for, until a plain focus, fork, or reset. */
+  let prefetchDay: DayIndex | null = null;
   const h: Host = {
     engine: options.engine ?? defaultEngine,
     post: (msg, transfer = []) => {
@@ -127,6 +133,8 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
     const traceFor = (d: DayIndex) => r.traces.find((t) => t.day === d);
     const f = r.days[r.focusDay]!;
     if (!f.complete) return () => stepDay(a, f);
+    const p = prefetchDay === null ? null : r.days[prefetchDay]!;
+    if (p && !p.complete) return () => stepDay(a, p);
     const ft = traceFor(r.focusDay);
     if (ft) return () => void (stepTrace(a, ft) && r.traces.splice(r.traces.indexOf(ft), 1));
     if (needsDensify(a, f)) return () => stepDensify(a, f);
@@ -172,6 +180,7 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
     const setup = h.setup!;
     const focus = clampWeek(focusMs);
     h.run = newRun(runId, setup, dayOf(focus), focus);
+    prefetchDay = null;
     postReady(h as Active);
     kick();
   }
@@ -235,6 +244,7 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
     cutSlot(a, r.days[day]!, cutMs);
     if (lasting) for (let d = day + 1; d < WEEK_DAYS; d++) r.days[d] = resetSlot(a, r.days[d]!);
     // The main thread treats the fork's day as the worker's focus from now on (U2 store.fork).
+    prefetchDay = null;
     refocus(a, day, patch.atMs);
   }
 
@@ -273,7 +283,13 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
       switch (msg.type) {
         case 'focus': {
           const t = clampWeek(msg.atMs);
-          refocus(a, dayOf(t), t);
+          const day = dayOf(t);
+          if (msg.prefetch) {
+            prefetchDay = day === a.run.focusDay ? null : day;
+          } else {
+            prefetchDay = null;
+            refocus(a, day, t);
+          }
           break;
         }
         case 'fork':

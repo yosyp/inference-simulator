@@ -191,23 +191,29 @@ describe('computed time', () => {
     expect(state().playheadMs).toBe(simMs(2, 10, 30, 10));
   });
 
-  it('sends focus when the playhead enters another day', () => {
+  it('sends focus on every seek, and when playback enters another day', () => {
     const { store, clock, state, queue, sentOf } = loaded();
     queue.runAll();
-    store.seek(simMs(2, 16, 59, 59)); // same day as the entry point
-    expect(sentOf('focus')).toEqual([]);
+    // A seek within the day re-prioritizes the worker around the playhead too.
+    store.seek(simMs(2, 16, 59, 59));
+    expect(sentOf('focus')).toEqual([{ type: 'focus', runId: 1, atMs: simMs(2, 16, 59, 59) }]);
     store.setSpeed(1000);
     store.play();
     clock.frame(16);
     expect(state().playheadMs).toBe(simMs(3, 7, 0, 15));
-    expect(sentOf('focus')).toEqual([{ type: 'focus', runId: 1, atMs: simMs(3, 7, 0, 15) }]);
+    expect(sentOf('focus').at(-1)).toEqual({ type: 'focus', runId: 1, atMs: simMs(3, 7, 0, 15) });
     store.pause();
     store.seek(simMs(0, 10));
     store.seek(simMs(0, 11));
-    expect(sentOf('focus').map((m) => m.atMs)).toEqual([simMs(3, 7, 0, 15), simMs(0, 10)]);
+    expect(sentOf('focus').map((m) => m.atMs)).toEqual([
+      simMs(2, 16, 59, 59),
+      simMs(3, 7, 0, 15),
+      simMs(0, 10),
+      simMs(0, 11),
+    ]);
   });
 
-  it('asks for the next day before playback reaches its uncomputed start', () => {
+  it('prefetches the next day before playback reaches it, without moving the focus', () => {
     const { store, clock, state, queue, sentOf, results } = loaded();
     queue.runUntil(() => results.callsOf('addRollup').length === 1);
     expect(state().computed).toEqual([{ fromMs: simMs(2, 0), toMs: simMs(3, 0) }]);
@@ -216,9 +222,21 @@ describe('computed time', () => {
     store.play();
     clock.frame(16);
     expect(dayOf(state().playheadMs)).toBe(2);
-    expect(sentOf('focus')).toEqual([{ type: 'focus', runId: 1, atMs: simMs(3, 7) }]);
+    const prefetch = { type: 'focus', runId: 1, atMs: simMs(3, 7), prefetch: true };
+    expect(sentOf('focus')).toEqual([{ type: 'focus', runId: 1, atMs: simMs(2, 16) }, prefetch]);
     clock.frames(3, 16);
-    expect(sentOf('focus')).toHaveLength(1);
+    expect(sentOf('focus')).toHaveLength(2);
+    // Once the playhead is on Thursday, a plain focus moves the worker's focus day there.
+    for (let i = 0; i < 10_000 && dayOf(state().playheadMs) !== 3; i++) {
+      queue.runNext();
+      clock.frame(16);
+    }
+    expect(dayOf(state().playheadMs)).toBe(3);
+    expect(sentOf('focus').at(-1)).toEqual({
+      type: 'focus',
+      runId: 1,
+      atMs: state().playheadMs,
+    });
   });
 });
 

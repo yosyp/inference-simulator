@@ -102,9 +102,12 @@ export function createPlaybackStore(options: PlaybackStoreOptions): EngineClient
   let runCounter = 0;
   /** Cuts of this run's forks, for judging older-revision messages (forks.ts). */
   let cuts: CutRecord[] = [];
-  /** The day the worker was last asked to compute first, and the day the playhead was last on. */
+  /**
+   * The worker's focus day: the playhead's day, which keeps 15-minute checkpoints for forks (P2).
+   * The prefetch day is the next day a lookahead asked the worker to stream first (protocol.ts).
+   */
   let focusDay: DayIndex | null = null;
-  let playheadDay: DayIndex | null = null;
+  let prefetchDay: DayIndex | null = null;
   let userTracked = false;
   let lastNow = 0;
   let frameHandle: number | null = null;
@@ -167,25 +170,29 @@ export function createPlaybackStore(options: PlaybackStoreOptions): EngineClient
 
   function sendFocus(atMs: SimMs) {
     focusDay = dayOf(atMs);
+    prefetchDay = null;
     post({ type: 'focus', runId: state.runId, atMs });
   }
 
-  /** Focus when the playhead enters another day, or when playback nears uncomputed time on a day the worker isn't on. */
+  /**
+   * Focus when the playhead enters another day. Prefetch when playback nears uncomputed time on
+   * a later day: that day streams next, and the playhead's day keeps its checkpoints.
+   */
   function maybeFocus() {
     if (!scenario) return;
     const t = state.playheadMs;
-    const day = dayOf(t);
-    if (day !== playheadDay) {
-      playheadDay = day;
-      if (day !== focusDay) {
-        sendFocus(t);
-        return;
-      }
+    if (dayOf(t) !== focusDay) {
+      sendFocus(t);
+      return;
     }
     if (!state.playing) return;
     const lookahead = Math.max(state.speed * FOCUS_LOOKAHEAD_WALL_MS, FOCUS_LOOKAHEAD_MIN_SIM_MS);
     const ahead = advancePlayhead(t, lookahead, scenario.sim.shift, state.computed);
-    if (ahead.buffering && dayOf(ahead.playheadMs) !== focusDay) sendFocus(ahead.playheadMs);
+    const day = dayOf(ahead.playheadMs);
+    if (ahead.buffering && day !== focusDay && day !== prefetchDay) {
+      prefetchDay = day;
+      post({ type: 'focus', runId: state.runId, atMs: ahead.playheadMs, prefetch: true });
+    }
   }
 
   function requestSlot(slot: DetailSlot) {
@@ -279,7 +286,8 @@ export function createPlaybackStore(options: PlaybackStoreOptions): EngineClient
     cuts = [];
     detail.clear();
     userTracked = false;
-    focusDay = playheadDay = dayOf(entry);
+    focusDay = dayOf(entry);
+    prefetchDay = null;
     results.reset(s.sim.replicas);
     setState({
       scenarioId: s.id,
@@ -301,13 +309,12 @@ export function createPlaybackStore(options: PlaybackStoreOptions): EngineClient
     );
   }
 
-  /** Moves the playhead (seek, jump) and tells the worker if it landed on another day. */
+  /** Moves the playhead (seek, jump) and refocuses the worker there, on any day. */
   function moveTo(atMs: SimMs, extra: Partial<PlaybackState> = {}) {
     const s = scenario!;
     const t = Math.min(WEEK_MS - 1, Math.max(0, atMs));
     setState({ ...extra, playheadMs: t, buffering: bufferingAt(t, s.sim.shift, state.computed) });
-    playheadDay = dayOf(t);
-    if (playheadDay !== focusDay) sendFocus(t);
+    sendFocus(t);
     maybeRequestDetail();
   }
 
@@ -370,6 +377,7 @@ export function createPlaybackStore(options: PlaybackStoreOptions): EngineClient
       detail.cut(cut.day, cut.cutMs, cut.lasting);
       // The worker restarts on the fork's day, so that is its focus now.
       focusDay = cut.day;
+      prefetchDay = null;
       setState({
         revision,
         computed,
