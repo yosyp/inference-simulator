@@ -37,24 +37,37 @@ export function maybeCheckpoint(h: Active, slot: DaySlot, run: CoreDayRun, fromM
 }
 
 /**
- * Keeps non-focus checkpoints within the budget: drops the latest checkpoint of the day farthest
- * from the focus day (later days first on ties) until it fits.
+ * Keeps non-focus checkpoints within the budget. The victim is the day farthest from the focus
+ * day, later days first on ties (the day before the focus may still hold the playhead after a
+ * lookahead focus), so the days next to it keep theirs longest.
  */
 export function enforceBudget(h: Active): void {
   const r = h.run;
-  const budget = h.budgetBytes;
   const others = r.days.filter((s) => s.day !== r.focusDay);
   let bytes = others.reduce((sum, s) => sum + totalBytes(s.checkpoints), 0);
-  while (bytes > budget) {
+  while (bytes > h.budgetBytes) {
     const victim = others
       .filter((s) => s.checkpoints.length > 0)
       .sort(
         (a, b) => Math.abs(b.day - r.focusDay) - Math.abs(a.day - r.focusDay) || b.day - a.day,
       )[0];
     if (!victim) return;
-    const dropped = victim.checkpoints[victim.checkpoints.length - 1]!;
-    victim.checkpoints = victim.checkpoints.slice(0, -1);
-    bytes -= dropped.bytes;
+    // Drop the checkpoint whose removal leaves the shortest gap between its neighbours (the
+    // morning and the shift's end bound the day), so the ones left stay spread out.
+    const list = victim.checkpoints;
+    const ds = dayStartMs(victim.day);
+    const at = (i: number) =>
+      i < 0
+        ? ds + h.setup.grid.activeStartMs
+        : i >= list.length
+          ? ds + h.setup.grid.activeEndMs
+          : list[i]!.cp.atMs;
+    let drop = 0;
+    for (let i = 1; i < list.length; i++) {
+      if (at(i + 1) - at(i - 1) <= at(drop + 1) - at(drop - 1)) drop = i;
+    }
+    bytes -= list[drop]!.bytes;
+    victim.checkpoints = list.filter((_, i) => i !== drop);
   }
 }
 
