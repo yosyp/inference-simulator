@@ -7,11 +7,13 @@ Related: 00-build §5 S1 and §8 (budgets), 02-simulator §5–§8 and §11, 04-
 
 A deliberately simple Server B engine (8 replicas, knee-level load, ticking every engine step) runs a busy Wednesday in 7–8 s of wall time on this host. That is about 3,000–5,000 simulated seconds per wall second, and 2,200–3,900× once a realistic prefix cache is added. A knee-level week is 1.2–1.5M requests. Full per-request records plus transitions cost 154 bytes per request, so the week's records alone take 190–235 MB.
 
+**The biggest engine risk is KV block bookkeeping, not steps.** Once the pool is warm, every block allocation evicts a cached block: about 51M allocate, evict, register and release cycles per knee day. E4's merged block manager costs about 140 ns per cycle under plain Node, which is about 7 s per Server B day, as much as the whole spike engine. An owner-array layout measured 12 ns per cycle in the same harness (§5, §8). Event-jumping does not reduce this cost.
+
 | Budget | Verdict | One line |
 |---|---|---|
-| P1 first frame ≤ 3 s | **Pass for entry ≤ 09:30; uncertain at 10:00; fail after ~11:00** (Server B, knee load) | 05:00→10:00 takes 3.0–3.7 s ticking at full fidelity; event-jumping should cut that to 1.5–2.7 s, plus 0.2–0.4 s to start |
+| P1 first frame ≤ 3 s | **Pass for entry ≤ 09:30 if E4's per-block cost drops to about 30 ns; with E4 as merged, only about 09:00** (Server B, knee load) | 05:00→10:00 takes 3.0–3.7 s ticking at full fidelity; event-jumping should cut that to 1.5–2.7 s plus 0.2–0.4 s to start. E4 as merged would add about 1.6 s by 10:00. |
 | P2 fork ≤ 1 s | **Pass** (projected) | Restore 2–6 ms, then replay ≤ 15 sim-min at peak (0.28–0.35 s ticking) and one short chunk |
-| P3 ≥ 1,000× at peak | **Pass** | 2,200–3,900× ticking with a prefix cache; projected 3,000–6,600× with event-jumping |
+| P3 ≥ 1,000× at peak | **Pass** | 2,200–3,900× ticking with a prefix cache; projected 3,000–6,600× with event-jumping, or 1,700–2,500× with E4 as merged |
 | P4 ≤ 400 MB | **Pass with detail on demand; fail with full records** | The records store alone is 315–390 MB per knee week; tracked-only with the recommended layouts is about 40 MB |
 | P5 no long tasks | **Uncertain** | Not measurable in Node. A chunk transfer costs 0.14 ms, so the risk is main-thread indexing and rendering |
 | P6 JS ≤ 300 KB | **Not affected** | The spike adds nothing to the bundle |
@@ -25,8 +27,8 @@ Recommendations, in one table (reasons in §6):
 | bucketMs / histBucketMs | 10 s / 60 s, emitted only over each day's active window (06:30–18:00 here) |
 | Histograms | Sparse (CSR) storage with 2× the current bins (ttft 192, tpot 128, e2e 192; bin ratio ≈ 1.075). If dense storage stays, use Uint16. |
 | Per-request storage | Detail on demand for Server A and B (the tracked analyst always has full records). Full records for 1 GPU and 2 replicas. |
-| Latest Server B entry | 09:30 is safe and 10:00 is likely. Server A can enter around 12:00 (projected); 1–2 replicas can enter at any time. |
-| Prefix cache (E4) | Per-block owner arrays plus a per-session chain of cached blocks. No `Map` per block. "Evict" is a counter, never a transition. |
+| Latest Server B entry | 09:30 is safe and 10:00 is likely, given a fast KV layout. About 09:00 with E4 as merged. Server A can enter around 12:00 (projected); 1–2 replicas can enter at any time. |
+| KV block manager (E4, merged) | Get the allocate, evict, register and release cycle from about 140 ns to 30 ns or less, for example with per-block owner arrays plus a per-session chain in place of `Map<owner, number[]>`. Keep scratch arrays out of checkpointed state. "Evict" is a counter, never a transition. |
 
 ## 2. Method
 
@@ -61,6 +63,7 @@ Recommendations, in one table (reasons in §6):
 | `week-heap.ts` | Heap for a 5-day week of chunks, full or tracked (`--detail`, `--chunk`) |
 | `storage.ts` | Scalar and histogram bytes per layout; percentile error per bin count |
 | `checkpoint.ts` | Checkpoint size, clone time, restore check, replay cost |
+| `kv-cycle.ts` | Per-block KV cycle cost: E4's merged `src/engine/kv` against the owner-array layout; E4 pool checkpoint size |
 
 ## 3. Load calibration: where the knee is
 
@@ -169,6 +172,7 @@ Uint16 is safe at both widths: the largest fleet count per bin per bucket is 191
 | No prefix hashing | 0.81–1.06 MB | 2.0–4.8 ms | 281 ms | 570 ms |
 | Owner-array prefix cache | 1.53–1.79 MB | 2.1–5.6 ms | 349 ms | 718 ms |
 | `Map` prefix cache | 1.93–2.22 MB | 12.9–21 ms | 798 ms | 1,564 ms |
+| E4 as merged (pools measured alone; the rest assumed as above) | about 3.0 MB (8 × 309 KB pools, plus about 0.5 MB of requests and sessions) | about 4 ms for the pools | — | — |
 
 - The range runs from 07:30 to 14:00; the size peaks at 10:30–11:00.
 - The breakdown at 10:30 (owner mode):
@@ -181,6 +185,7 @@ Uint16 is safe at both widths: the largest fleet count per bin per bucket is 191
 - The day's session plan (start times and analysts, about 0.7 MB) is regenerable from keys, so it is left out.
 - A `Map` in the state clones 3–6× slower than typed arrays holding the same information.
 - The block-index arrays could be Uint16, since the pool is 8,750 blocks. That saves about 0.5 MB per checkpoint.
+- E4's pool serializes to 309 KB per replica. That includes a 70 KB `evictedKeys` scratch array and a 35 KB free stack; the spike's owner layout is 175 KB (`kv-cycle.ts`). At 46 checkpoints per day, the difference is about 50 MB.
 
 ### 4.6 Percentile error of the histograms (simulated TTFT, knee week, 1.23M samples)
 
@@ -219,6 +224,7 @@ The spike ticks every step and, by default, skips history hashing. For P3 and P1
 |---|---|---|---|
 | Prefix hashing + LRU eviction, `Map` per block | +175% (small-integer keys) to +250% (double keys) | Per-block, so not reduced (51M evictions/day) | Measured |
 | Prefix hashing + LRU, owner arrays | +15–35% | Per-block, so not reduced | Measured |
+| **E4's merged block manager** (in place of the owner arrays) | About 140 ns per allocate, evict, register and release cycle, against 12 ns for owner arrays in the same harness. About 51M cycles per knee day: about 7 s per day, 0.5 s per peak 30 minutes, and 1.1 / 1.5 / 1.9 s by 09:00 / 09:30 / 10:00. | Per-block, so not reduced | Measured (`kv-cycle.ts`) |
 | Preemption (recompute) | Already included: 2.8k/day at knee, 10–40k/day in overload | Included | Measured |
 | Metrics recording (34 scalars, 3 histograms) | +5–10% | Similar, plus closed-form level integration per segment | Measured (noisy) |
 | Records and transitions, detail 'all' | +0–3% | Same | Measured |
@@ -231,6 +237,7 @@ The spike ticks every step and, by default, skips history hashing. For P3 and P1
 - Multiply by 0.45–0.6 for event-jumping (the peak figure; mornings save a little more), then by 1.1–1.2 for routing, retries, recording and failure handling. That gives **0.5–0.72 × the measured full-fidelity tick time**.
 - P3 on this host: the slowest peak windows (2,190–3,310× across runs) become **about 3,000–6,600×**.
 - P1 on this host, 05:00→10:00: 3.0–3.7 s becomes **1.5–2.7 s**, plus 0.2–0.4 s for worker start and first render.
+- These projections assume a KV layout as fast as the spike's owner arrays. With E4 as merged, add about 0.45 s per peak 30 minutes, so P3 becomes **about 1,700–2,500×**, and add about 1.6 s to 05:00→10:00 (1.9 s of KV work, less the 0.3 s the owner layout already costs).
 
 **Laptop factor.** Not measured. A 2023 mid-range laptop core is typically as fast as, or up to 1.5× faster than, one Xeon 8380 core when plugged in, and can be 1.5–2× slower when throttled. Chrome's worker runs the same V8 as Node, but under the main thread's GC and rendering. Treat the projections as ±50%.
 
@@ -274,6 +281,7 @@ The spike ticks every step and, by default, skips history hashing. For P3 and P1
 |---|---|---|---|---|---|---|
 | Ticking, full fidelity (measured) | 2.2–2.3 s | 2.6–3.0 s | 3.0–3.7 s | 3.5–4.5 s | 4.0–5.3 s | **09:00** |
 | Event-jumping (projected, + 0.2–0.4 s fixed) | 1.3–2.1 s | 1.5–2.6 s | 1.7–3.1 s | 2.0–3.6 s | 2.2–4.2 s | **09:30 safe, 10:00 likely** |
+| Event-jumping with E4 as merged (projected) | 2.2–3.0 s | 2.7–3.8 s | 3.3–4.7 s | 4.0–5.6 s | 4.6–6.6 s | **about 09:00, at the edge** |
 
 - Cost scales roughly with replicas × load. Server A (tab 6, 4 replicas) costs about half as much per simulated hour, so it can enter around 12:00 (projected) at the same per-replica load. Tabs 1–4 (1–2 replicas) can enter at any time.
 - For tab 5, the diurnal curve is already at 88% of peak by 09:30, so a crash between 09:30 and 10:00 still happens under heavy load.
@@ -289,7 +297,7 @@ The spike ticks every step and, by default, skips history hashing. For P3 and P1
   - checkpoints: 45–80 MB;
   - engine state: about 5 MB;
   - browser baseline for a React, canvas and SVG page: 100–150 MB (assumed, not measured).
-- That comes to **about 200–280 MB against 400 MB**. With full records it is **about 470–620 MB**.
+- That comes to **about 200–280 MB against 400 MB**. E4's pools as merged make each checkpoint about 3 MB, which adds about 60 MB. With full records it is **about 470–620 MB**.
 
 ## 7. What the simplifications hide
 
@@ -305,13 +313,14 @@ The spike ticks every step and, by default, skips history hashing. For P3 and P1
   - Node on a shared server, not Chrome on a laptop.
   - Heap is `heapUsed + arrayBuffers` in Node. Chrome's task manager also counts the renderer and DOM, which the P4 projection assumes rather than measures.
   - P5 can't be measured here.
-- **Workload parameters** are fixture-like placeholders (E6 sets defaults). Longer outputs or conversations raise KV pressure and steps per request.
+- **Workload parameters** are fixture-like placeholders (E6 sets defaults). Longer outputs or conversations raise KV pressure and steps per request. The spike uses a lognormal think time; K23 has since chosen log-logistic, whose heavier tail changes little here.
+- **Merged modules.** The spike was written against the contracts only. E1–E4 merged while it ran. E3's step-cost formula is identical to the spike's, so the knee numbers carry over. E4's block manager was measured separately (`kv-cycle.ts`), not run inside the spike engine.
 
 ## 8. Notes for other work packages
 
 | For | Note |
 |---|---|
-| E4 | Don't key cached blocks through a `Map`. Store (session, block index) per block in typed arrays (`owner` Int32, `ownerIdx` Uint16) and give each session a head block per replica, with a per-block `nextInSeq` chain. Eviction is then one typed-array write, and lookup walks the chain, validating the owner. Measured: identical behaviour to the `Map` version, about 2.4× faster overall, and a 0.4 MB smaller checkpoint that clones 3–6× faster. Use Uint16 block indices while the pool is under 65,536 blocks. |
+| E4 | The merged block manager costs about 140 ns per allocate, evict, register and release cycle under plain Node, and a knee day has about 51M cycles. That is about 7 s per Server B day and about 1.9 s of P1 at a 10:00 entry. It is the largest single engine cost, and event-jumping does not reduce it. Target 30 ns or less. One layout that measured 12 ns in the same harness, and +15–35% on the whole spike engine: per block, store (session, block index) in typed arrays (`owner` Int32, `ownerIdx` Uint16) and a `nextInSeq` chain; per session, keep one head block per replica. Eviction is then one typed-array write, and lookup walks the chain, checking the owner. This replaces `Map<owner, number[]>` with push and pop trimming. Also keep the `evictedKeys` scratch array out of checkpointed state, and use Uint16 block indices while the pool is under 65,536 blocks: E4's pool serializes to 309 KB per replica, against 175 KB for this layout. |
 | E4, E9 | Evict happens about 50M times per knee day (every allocation once the pool is warm). It is a scalar counter only, never a transition or engine event. |
 | E5 | 02 §7 rule 1 (blocks for the whole uncached prompt at admission) and vLLM V1 (blocks per scheduled chunk) differ for prompts longer than `max_num_batched_tokens`. That matters for tab 1. |
 | E5 | The ramp costs as much as the peak for a ticking engine, because small batches mean many short steps. Event-jumping pays off most there. |
