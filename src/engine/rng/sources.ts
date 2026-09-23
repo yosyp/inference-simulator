@@ -22,9 +22,9 @@ export const Source = {
   outputLength: 6,
   /** Think time before the next turn (log-logistic). E6. Keys: (day, session, turn). */
   thinkTime: 7,
-  /** Retry backoff jitter. E6. Keys: (day, request, attempt). */
+  /** Retry backoff jitter. E6. Keys: (day, session, turn, attempt), stable across renumbering. */
   retryJitter: 8,
-  /** Tie-breaks between equally good replicas. E7. Keys: (day, request). */
+  /** Tie-breaks between equally good replicas. E7. Keys: (day, session, turn, attempt, kind), stable across retries. */
   routingTieBreak: 9,
   /** Failure timing or target. E8. Keys: (day, replica, incident). */
   failure: 10,

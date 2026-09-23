@@ -62,7 +62,11 @@ export const TOPIC = {
    * E6 after it fills the slot; E7 applies admission control and routes it.
    */
   requestArrived: 4,
-  /** E7 dispatched a request after the router overhead. a = RequestSlot, b = ReplicaId. E5 enqueues it. */
+  /**
+   * E7 dispatched a request after the router overhead. a = RequestSlot, b = ReplicaId. E7 sets
+   * dispatchMs and replica before notifying; E5 enqueues it, and may end it inside this notice (e.g.
+   * on a crashed replica).
+   */
   requestDispatched: 5,
   /**
    * The client gave up (timeout to first token, K8). a = RequestSlot. Emitted by E6. Whichever

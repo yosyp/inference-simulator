@@ -41,7 +41,11 @@ export interface TunableParams {
   hashScheme: HashScheme;
   /** Load signals the router sees are refreshed at this interval (02 §7). */
   signalRefreshMs: number;
-  /** Fleet cap = this × Ready replicas, on router-tracked outstanding requests (K9). null disables admission control. */
+  /**
+   * Fleet cap = this × routable replicas (Ready, plus crashed-but-not-yet-marked-down), on requests the
+   * router has admitted and not seen end, including those still in the router overhead (K9). null
+   * disables admission control.
+   */
   admissionLimitPerReplica: number | null;
   weightAffinity: number;
   weightOutstanding: number;

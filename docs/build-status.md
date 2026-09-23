@@ -10,21 +10,21 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E1 Keyed RNG | merged | main | `u01(seed, Source.x, k0..k5)` plus inverse-CDF transforms; think time is log-logistic (K23); ~20M draws/s in Node |
 | E2 Event core | merged | main | `createDayRunner(modules)`; `defineModule`; two-number event payloads; kind ranges E6 100s, E7 200s, E5 300s, E8 400s, E9 500s; ~2M events/s in the core; K27 |
 | E3 Cost model | merged | main | Batch-1 TPOT +5% at 8k, +20% at 32k, +77% at 122,880 (K3 holds); TTFT 38 s at 120k. Tab 3 compute-util bound tightened in §7.3. |
-| E4b KV fast path | todo | | Cycle cost ~140 ns → ≤ 30 ns, same API (G1) |
+| E4b KV fast path | running | | Cycle cost ~140 ns → ≤ 30 ns, same API (G1) |
 | E4 KV blocks | merged | main | Recipe at the top of `src/engine/kv/index.ts`; ~9 µs per request lifecycle; warm-pool clone 0.31 ms / 310 KiB. Free-block order follows vLLM ≥0.26 (0.20.1 differs by ~1 partial block per request; one-line change if parity matters). |
-| E5 Scheduler | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
-| E6 Load generator | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
-| E7 Router | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
+| E5 Scheduler | running | | Resumed after a transient API error |
+| E6 Load generator | running | | Resumed after a transient API error |
+| E7 Router | merged | main | Admission counts admitted-not-ended (incl. router overhead); no routable replica → reject. C3: use virtualNodesPerReplica ≥ 128 (64 lets one replica own ~15.6% of the ring). Signal refresh runs all day (~86k events at 1 s). |
 | E8 Failure | todo | | |
-| E9 Metrics | paused | worktree kept | Stopped by the session limit; on resume, adopt K28/K29 (sparse histograms) |
+| E9 Metrics | running | | Resumed; emits sparse histograms (K29) |
 | E10 Oracle | todo | | |
 | E11 Assembly and worker | todo | | Must follow protocol.ts ordering and detail-chunk rules (U2, U8 handoffs) |
 | U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
-| U3 Canvas | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
-| U4 Charts | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
-| U5 Timeline | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
-| U6 Chrome and sidebar | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
+| U3 Canvas | running | | Resumed after a transient API error |
+| U4 Charts | running | | Resumed after a transient API error |
+| U5 Timeline | running | | Resumed after a transient API error |
+| U6 Chrome and sidebar | running | | Resumed after a transient API error |
 | U7 High side | todo | | |
 | U8 Results index | merged | main | `createResultsStore(replicas)`; whole-week chart redraw ~30 ms for 72 queries; detail memory unbounded by default (~3 MB per 10-min Server B window; `maxDetailChunks` if needed). X1: pass `createResults: createResultsStore`. |
 | C1 Runner | todo | | |
