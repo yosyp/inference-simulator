@@ -17,8 +17,8 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E7 Router | merged | main | Admission counts admitted-not-ended (incl. router overhead); no routable replica → reject. C3: use virtualNodesPerReplica ≥ 128 (64 lets one replica own ~15.6% of the ring). Signal refresh runs all day (~86k events at 1 s). |
 | E8 Failure | running | | Started early: only emits replicaState, which E5 and E7 consume |
 | E9 Metrics | merged | main | `metricsModule`, `dayRollup(state)`, `inFlightTransitions(...)` for detail replays; slice ~23 KB, clone 47 µs; ~1.4–2 µs per request. Rollup utilization = busy within the shift ÷ shift length. Open: 'active window only' emission (skip night buckets) — needs a small contract (E11/E9 follow-up). |
-| E10 Oracle | todo | | |
-| E11 Assembly and worker | todo | | Must follow protocol.ts ordering and detail-chunk rules (U2, U8 handoffs) |
+| E10 Oracle | running | | Includes kvUtilization two-replica seeds (meterSync regression) |
+| E11 Assembly and worker | running | | Must follow protocol.ts ordering and detail-chunk rules (U2, U8 handoffs) |
 | U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
 | U3 Canvas | merged | main | `<SimCanvas store={store} />` fills the canvas slot; ~0.5 ms main-thread per frame at 1,000 dots. Optional later: `TrackedRequestView.prevReplica`. |
