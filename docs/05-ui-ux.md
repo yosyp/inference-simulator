@@ -145,6 +145,7 @@ Carried from the draft: the 70/30 split, the intro modal on every load without p
 | K17 | Sidebar for self-serve visitors | Static text only; static text plus "Try this" | Static text plus "Try this" suggestions (still static, per Q4); rollup table collapsible |
 | K18 | Accessibility baseline | None stated; baseline | Keyboard operation, reduced motion for chrome, `aria-live` status line, never color alone |
 | K26 | Palette, encodings, and shell behavior (open item 2; decided in U1) | — | Okabe–Ito-based tokens with a non-color cue per state (`src/ui/theme/README.md` has contrast ratios and a deuteranopia/protanopia check). Tabs use manual activation, since switching tabs resets a run. Tabs, toolbar, and timeline stay fixed; only the canvas and charts scroll. The parameters drawer opens inline under the toolbar. The small-window notice is a banner, not a blocking screen. Fork, incident, and playhead markers use neutral ink plus a glyph, because any orange thin line matches the p99 vermillion under deuteranopia. |
+| K31 | Timeline interaction details (decided in U5) | — | Keyboard steps move in shift time, skipping nights (ArrowRight at 16:59 lands on the next day's 07:00), matching playback. Pointer seeks into shaded hours snap to the nearer shift edge. Clicking a marker seeks to the marker's time. The buffering copy is "Computing…". The lesson marker sits above the bar and fork flags inside its top edge, so the playhead knob (on the computed strip below) never hides them. |
 
 ## 12. Open items
 

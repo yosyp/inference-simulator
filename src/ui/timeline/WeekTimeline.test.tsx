@@ -20,15 +20,11 @@ const LESSON = scenario.lessonMoment.atMs;
 const RECT = { left: 100, top: 0, width: 1200, height: 40 };
 const xAt = (t: SimMs) => RECT.left + (t / WEEK_MS) * RECT.width;
 
-// Testing Library's async wrapper (which user-event runs through) drains with a setTimeout(0) and
-// advances only Jest's fake timers, so under Vitest's it would wait forever. Point it at Vitest's.
-const withJest = globalThis as { jest?: { advanceTimersByTime: (ms: number) => void } };
+// src/test-setup.ts points Testing Library's fake-timer hook at Vitest's.
 beforeEach(() => {
   vi.useFakeTimers();
-  withJest.jest = { advanceTimersByTime: (ms) => vi.advanceTimersByTime(ms) };
 });
 afterEach(() => {
-  delete withJest.jest;
   vi.useRealTimers();
 });
 

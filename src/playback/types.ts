@@ -40,6 +40,8 @@ export interface PlaybackStore {
   getState(): PlaybackState;
   subscribe(listener: () => void): () => void;
   readonly index: ResultsIndex;
+  /** The loaded scenario (shift, lesson moment, entry, copy), or null before loadScenario. */
+  readonly scenario: Scenario | null;
   loadScenario(scenario: Scenario): void;
   play(): void;
   pause(): void;

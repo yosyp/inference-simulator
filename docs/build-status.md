@@ -23,7 +23,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
 | U3 Canvas | running | | Resumed after a transient API error |
 | U4 Charts | running | | Resumed after a transient API error |
-| U5 Timeline | running | | Resumed after a transient API error |
+| U5 Timeline | merged | main | `WeekTimeline({ store })`, 72 px; playhead moves per frame without React re-renders; K31. Incident markers other than the lesson moment aren't drawn (tabs 5–6: the lesson moment is the incident). |
 | U6 Chrome and sidebar | running | | Resumed after a transient API error |
 | U7 High side | todo | | |
 | U8 Results index | merged | main | `createResultsStore(replicas)`; whole-week chart redraw ~30 ms for 72 queries; detail memory unbounded by default (~3 MB per 10-min Server B window; `maxDetailChunks` if needed). X1: pass `createResults: createResultsStore`. |

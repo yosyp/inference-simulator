@@ -17,7 +17,6 @@ import {
   type DayIndex,
 } from '../../engine/time.ts';
 import type { Shift } from '../../playback/shift.ts';
-import type { EngineClientStore } from '../../playback/store.ts';
 import type {
   ForkMarker,
   Mode,
@@ -51,7 +50,7 @@ export const TIMELINE_VIEW_HZ = 4;
 export const TIMELINE_CLOCK_HZ = 8;
 
 export interface WeekTimelineProps {
-  /** The playback store. Shift and lesson moment come from its loaded scenario (EngineClientStore). */
+  /** The playback store. Shift and lesson moment come from its loaded scenario. */
   store: PlaybackStore;
 }
 
@@ -84,9 +83,9 @@ const selectClock = (s: PlaybackState): Clock => ({
   buffering: s.buffering,
 });
 
-/** The scenario the store has loaded, when the store can say (createPlaybackStore can). */
+/** The scenario the store has loaded. */
 export function loadedScenario(store: PlaybackStore): Scenario | null {
-  return (store as Partial<EngineClientStore>).scenario ?? null;
+  return store.scenario;
 }
 
 export function WeekTimeline({ store }: WeekTimelineProps) {

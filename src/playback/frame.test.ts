@@ -53,6 +53,7 @@ describe('subscribeFrame', () => {
     // Only the PlaybackStore contract: no frame hook (spreading the store would copy it).
     const noop = () => {};
     const plain: PlaybackStore = {
+      scenario: store.scenario,
       getState: () => state,
       subscribe: (l) => {
         listeners.add(l);
