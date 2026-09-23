@@ -27,9 +27,9 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | U6 Chrome and sidebar | merged | main | `pnpm e2e` now exercises every tab, modal, play, toggle, drawer, reset. X1 swaps `createAppScenarios`/`createAppStore` and the `SlotPlaceholder`s in App.tsx, and keeps one of the two clocks (toolbar vs timeline). Tooltip fixed (no open on click-focus). Toolbar token 78 px. X3: intro says 'Calibrated on…' while calibration is provisional. |
 | U7 High side | merged | main | `RollupTable` mounted; `useDeliveredRollup`; cross-surface consistency test (charts, table, timeline). X3 polish: DailyBars says 'Arrives …' for a due-but-uncomputed day (table says 'Computing…'); timeline ticks mark arrival time regardless of computation. The failed-replica drop in requests served needs real engine data to show. |
 | U8 Results index | merged | main | `createResultsStore(replicas)`; whole-week chart redraw ~30 ms for 72 queries; detail memory unbounded by default (~3 MB per 10-min Server B window; `maxDetailChunks` if needed). X1: pass `createResults: createResultsStore`. |
-| C1 Runner | todo | | |
-| C2 Tabs 1–3 | todo | | |
-| C3 Tabs 4–6 | todo | | |
+| C1 Runner | running | | |
+| C2 Tabs 1–3 | running | | Split per tab: C2a (tab 1), C2b (tab 2), C2c (tab 3) |
+| C3 Tabs 4–6 | running | | Split per tab: C3a (tab 4), C3b (tab 5), C3c (tab 6) |
 | B1 Harness | merged | main | `uv run harness plan all` prints R0–R8; ~3.9 h wall, ~4.2 GPU-h (±50%). vLLM 0.20.1 in the optional `engine` group. |
 | B2 Runs | todo | | Blocked on the author: download the Llama weights, free both GPUs, approve GPU use. R0 smoke: `cd benchmarks && uv sync --group engine && uv run harness preflight && uv run harness run R0 --gpus 0 --gpu-approved` |
 | B3 Derivation | todo | | |
@@ -39,6 +39,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | I3 Deploy workflow | merged | main | deploy.yml calls ci.yml (workflow_call); build job has no id-token; deploy never cancelled; ci concurrency split per workflow |
 | I4 CSP smoke test | merged | main | `scripts/serve-prod.ts` + `e2e/`; optional steps marked IF PRESENT for X1 to harden; negative checks (inline style, blob worker, fetch) all fail as expected |
 | I5 First deploy | todo | | Author runs |
+| X1b Playback fixes and e2e | running | | Focus on in-day seeks; keep the playhead day's checkpoints; one clock; hard e2e; P5 trace |
 | X1 Vertical slice | partial | main | Done: all components mounted; the app runs the real engine in a Web Worker; verify and e2e (real worker, prod CSP) pass. Left: scenario registry (after C2); keep one of the two clocks; harden e2e IF PRESENT steps; U2 should send `focus` on in-day seeks and not thin the playhead day's checkpoints on lookahead (else a late-day fork can miss P2); measure P5 in Chrome. |
 | X2–X5 | todo | | |
 
