@@ -129,8 +129,20 @@ export function fixtureScenarios(): Scenario[] {
     placeholder('long-prompt', 1, 'Long prompt', '1 GPU', 'utilization'),
     placeholder('knee', 2, 'Saturation knee', '1 GPU', 'utilization'),
     placeholder('kv-exhaustion', 3, 'KV exhaustion', '1 GPU', 'utilization'),
-    placeholder('routing', 4, 'Routing', '2 replicas', 'perReplicaLoad'),
+    {
+      ...placeholder('routing', 4, 'Routing', '2 replicas', 'perReplicaLoad'),
+      namedFix: {
+        label: 'TODO(copy): switch to session affinity',
+        changes: { routingPolicy: 'sessionAffinity' },
+      },
+    },
     placeholder('fail-recover', 5, 'Fail and recover', 'Server B', 'perReplicaLoad'),
-    placeholder('retry-storm', 6, 'Retry storm', 'Server A', 'offeredVsAdmitted'),
+    {
+      ...placeholder('retry-storm', 6, 'Retry storm', 'Server A', 'offeredVsAdmitted'),
+      namedFix: {
+        label: 'TODO(copy): backoff and admission control',
+        changes: { retryPolicy: 'fullJitter', admissionLimitPerReplica: 8 },
+      },
+    },
   ];
 }

@@ -46,6 +46,8 @@ export function Tooltip({ content, children, placement = 'top', delayMs = 400 }:
     setAnchor({ x, y: placement === 'top' ? r.top : r.bottom, align });
   };
 
+  /** Set by a pointer press on the control, so the focus that follows doesn't open the tooltip. */
+  const pressed = useRef(false);
   const clearTimer = () => window.clearTimeout(timer.current);
   const show = (via: 'hover' | 'focus') => {
     clearTimer();
@@ -85,8 +87,20 @@ export function Tooltip({ content, children, placement = 'top', delayMs = 400 }:
         className="contents"
         onPointerEnter={() => show('hover')}
         onPointerLeave={hideHover}
-        onFocus={() => show('focus')}
+        onFocus={() => {
+          // A mouse click focuses too; a tooltip opened by it would sit over neighbouring controls
+          // and swallow the next click. Show on focus only when no pointer press caused it.
+          if (pressed.current) pressed.current = false;
+          else show('focus');
+        }}
         onBlur={() => setFocused(false)}
+        onPointerDown={() => {
+          pressed.current = true;
+          clearTimer();
+          setHovered(false);
+          setFocused(false);
+          setDismissed(true);
+        }}
       >
         {cloneElement(children, { 'aria-describedby': describedBy })}
       </span>

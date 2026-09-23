@@ -1,6 +1,6 @@
 // Layout tokens (05 §1, K15), mirrored from the --layout-* variables in src/index.css.
 // At the 1440×900 design target the whole stack fits without scrolling:
-// tabs 44 + toolbar 48 + canvas 272 + 3 charts × 132 + timeline 72 = 832 px, plus borders.
+// tabs 44 + toolbar 78 + canvas 272 + 3 charts × 132 + timeline 72 = 862 px, plus borders.
 
 export const viewport = {
   designWidthPx: 1440,
@@ -14,7 +14,8 @@ export const layout = {
   /** Simulator column share of the width; the sidebar takes the rest. */
   simulatorFraction: 0.7,
   tabsHeightPx: 44,
-  toolbarHeightPx: 48,
+  /** Two rows: tabs 4 and 6 carry a named fix beside the trigger (U6). */
+  toolbarHeightPx: 78,
   canvasHeightPx: 272,
   /** Height of one chart; the charts slot stacks three. */
   chartHeightPx: 132,

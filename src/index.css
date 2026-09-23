@@ -99,7 +99,7 @@
 /* Layout (05 §1, K15). Mirrored in src/ui/theme/layout.ts. */
 :root {
   --layout-tabs-h: 44px;
-  --layout-toolbar-h: 48px;
+  --layout-toolbar-h: 78px;
   --layout-canvas-h: 272px;
   --layout-chart-h: 132px;
   --layout-timeline-h: 72px;

@@ -125,8 +125,10 @@ export interface DayRunInput {
   calibration: Calibration;
   day: DayIndex;
   /**
-   * Every patch in effect for the week, in any order. The engine applies 'set' patches dated before
-   * this day from the day's start, and 'event' patches only if they fall within this day.
+   * Every patch in effect for the week. 'set' patches apply in atMs order, and patches with equal
+   * atMs apply in array order, so a later fork at the same instant wins (the drawer relies on this).
+   * The engine applies 'set' patches dated before this day from the day's start, and 'event' patches
+   * only if they fall within this day.
    */
   patches: readonly Patch[];
   trackedAnalyst: AnalystId | null;

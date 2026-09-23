@@ -22,6 +22,8 @@ __pycache__/
 .pytest_cache/
 
 # Editors and OS
+*.swp
+*.swo
 .DS_Store
 .idea/
 .vscode/

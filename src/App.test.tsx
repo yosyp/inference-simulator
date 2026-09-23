@@ -1,10 +1,106 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it } from 'vitest';
 import { App } from './App.tsx';
+import { createTestStore, testScenarios, type TestStore } from './ui/chrome/testing.tsx';
+
+let current: TestStore | null = null;
+afterEach(() => {
+  current?.store.dispose();
+  current = null;
+});
+
+function setup() {
+  current = createTestStore();
+  const user = userEvent.setup();
+  const view = render(<App store={current.store} scenarios={testScenarios()} />);
+  return { ...current, ...view, user, state: () => current!.store.getState() };
+}
+
+async function dismissIntro(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Start exploring' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+}
 
 describe('App', () => {
-  it('renders the title', () => {
-    render(<App />);
-    expect(screen.getByRole('heading', { name: 'Inference Simulator' })).toBeInTheDocument();
+  it('opens on the first tab, paused at its entry point, behind the intro', async () => {
+    const { user, state } = setup();
+    expect(screen.getByRole('dialog', { name: 'Inference Simulator' })).toBeInTheDocument();
+    expect(state()).toMatchObject({
+      scenarioId: 'long-prompt',
+      playing: false,
+      playheadMs: testScenarios()[0]!.entry.atMs,
+    });
+    await dismissIntro(user);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Inference Simulator');
+    expect(screen.getAllByRole('tab')).toHaveLength(6);
+    expect(screen.getByRole('button', { name: /^play\b/i })).toBeEnabled();
+  });
+
+  it('shows the intro again on every load, and from About', async () => {
+    const first = setup();
+    await dismissIntro(first.user);
+    await first.user.click(screen.getByRole('button', { name: 'About' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    first.unmount();
+    first.store.dispose();
+    setup();
+    expect(screen.getByRole('dialog', { name: 'Inference Simulator' })).toBeInTheDocument();
+  });
+
+  it('fills the canvas, charts, and timeline slots with labelled placeholders', async () => {
+    const { user } = setup();
+    await dismissIntro(user);
+    expect(
+      within(screen.getByRole('region', { name: 'Simulation' })).getByText('Canvas'),
+    ).toBeInTheDocument();
+    const charts = screen.getByRole('region', { name: 'Charts' });
+    expect(charts.querySelectorAll('[data-placeholder="U4"]')).toHaveLength(3);
+    expect(
+      within(screen.getByRole('region', { name: 'Week timeline' })).getByText('Week timeline'),
+    ).toBeInTheDocument();
+  });
+
+  it('switches the whole view to High side and back (05 §9)', async () => {
+    const { user, container, state } = setup();
+    await dismissIntro(user);
+    const shell = container.querySelector('[data-mode]');
+    expect(shell).toHaveAttribute('data-mode', 'live');
+    expect(screen.getByRole('region', { name: 'Live status' })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'High side' }));
+    expect(state().mode).toBe('highSide');
+    await waitFor(() => expect(shell).toHaveAttribute('data-mode', 'highSide'));
+    expect(screen.queryByRole('region', { name: 'Live status' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Daily rollup' })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Live' }));
+    await waitFor(() => expect(shell).toHaveAttribute('data-mode', 'live'));
+    expect(screen.getByRole('region', { name: 'Live status' })).toBeInTheDocument();
+  });
+
+  it("forgets a tab's parameter changes when you leave it (K16)", async () => {
+    const { user, state, store } = setup();
+    await dismissIntro(user);
+    await user.click(screen.getByRole('tab', { name: /^4 Routing/ }));
+    await waitFor(() => expect(state().scenarioId).toBe('routing'));
+    await user.click(screen.getByRole('button', { name: /parameters/i }));
+    const select = await screen.findByRole('combobox', { name: 'Routing policy' });
+    await user.selectOptions(select, 'Session affinity');
+    await waitFor(() => expect(select).toHaveDisplayValue('Session affinity'));
+    expect(state().forks).toHaveLength(1);
+
+    await user.click(screen.getByRole('tab', { name: /^1 Long prompt/ }));
+    await waitFor(() => expect(state().scenarioId).toBe('long-prompt'));
+    await user.click(screen.getByRole('tab', { name: /^4 Routing/ }));
+    await waitFor(() => expect(state().scenarioId).toBe('routing'));
+    expect(state().forks).toEqual([]);
+    expect(screen.getByRole('combobox', { name: 'Routing policy' })).toHaveDisplayValue(
+      'Round-robin',
+    );
+    // Only this run's forks count, even at the same playhead.
+    act(() => store.seek(state().playheadMs));
+    const load = screen.getByRole('slider', { name: 'Load' });
+    fireEvent.change(load, { target: { value: '1.2' } });
+    fireEvent.keyUp(load, { key: 'ArrowRight' });
+    expect(state().forks.map((f) => f.label)).toEqual(['Load: 1.2×']);
   });
 });

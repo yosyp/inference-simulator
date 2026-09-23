@@ -41,6 +41,14 @@ describe('Tooltip', () => {
     expect(tooltip()).not.toBeInTheDocument();
   });
 
+  it('stays closed when a click focuses the control', async () => {
+    const user = userEvent.setup();
+    render(<Toolbar delayMs={10_000} />);
+    await user.click(trigger());
+    expect(trigger()).toHaveFocus();
+    expect(tooltip()).not.toBeInTheDocument();
+  });
+
   it('shows on hover after the delay and hides when the pointer leaves', async () => {
     const user = userEvent.setup();
     render(<Toolbar />);
