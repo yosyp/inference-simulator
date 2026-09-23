@@ -57,4 +57,19 @@ export const TOPIC = {
   requestEnded: 2,
   /** A replica changed state. a = ReplicaId, b = REPLICA_STATE code from results.ts. Emitted by E8. */
   replicaState: 3,
+  /**
+   * A request arrived at the router (new turn, retry, or extra request). a = RequestSlot. Emitted by
+   * E6 after it fills the slot; E7 applies admission control and routes it.
+   */
+  requestArrived: 4,
+  /** E7 dispatched a request after the router overhead. a = RequestSlot, b = ReplicaId. E5 enqueues it. */
+  requestDispatched: 5,
+  /**
+   * The client gave up (timeout to first token, K8). a = RequestSlot. Emitted by E6. Whichever
+   * module holds the request (E7 before dispatch, E5 after) removes it, frees its resources, and
+   * emits requestEnded with OUTCOME.timedOut.
+   */
+  requestCancelled: 6,
+  /** A request changed REQUEST_STATE. a = RequestSlot, b = new state. Emitted by the module that changed it (E7, E5); E9 records transitions. */
+  requestState: 7,
 } as const;
