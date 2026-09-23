@@ -96,7 +96,22 @@ export type InjectedEvent =
       promptTokens: number;
       outputTokens: number;
     }
-  | { type: 'loadSpike'; multiplier: number; durationMs: number };
+  | { type: 'loadSpike'; multiplier: number; durationMs: number }
+  /**
+   * Sessions that start in [atMs, atMs + durationMs) on that day use these values in place of the
+   * params in effect, for their whole script. One-shot (K21): the day's later sessions, and later
+   * days, keep the params in effect. Overlapping shifts apply in patch order, so a later one wins.
+   */
+  | {
+      type: 'workloadShift';
+      changes: Partial<
+        Pick<
+          TunableParams,
+          'turnsPerSessionMean' | 'messageTokensMedian' | 'outputTokensMedian' | 'thinkTimeMedianMs'
+        >
+      >;
+      durationMs: number;
+    };
 
 /**
  * A change at time atMs (K21). 'set' is lasting: it also applies to later days, from their start.

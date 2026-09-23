@@ -1,5 +1,5 @@
-// Whole-day properties of the load module: pairing (K6), sessionPlan, spikes, determinism, and
-// checkpoint/restore/fork (K21).
+// Whole-day properties of the load module: pairing (K6), sessionPlan, spikes, workload shifts,
+// determinism, and checkpoint/restore/fork (K21).
 
 import { describe, expect, it } from 'vitest';
 import type { DayRunInput, Patch, SessionSummary } from '../api.ts';
@@ -8,7 +8,7 @@ import { OUTCOME } from '../results.ts';
 import { REQUEST_KIND } from '../shared/index.ts';
 import { HOUR_MS, MINUTE_MS, dayStartMs } from '../time.ts';
 import { sessionPlan } from './plan.ts';
-import { drawThinkMs, drawTurns } from './script.ts';
+import { drawMessageTokens, drawOutputTokens, drawThinkMs, drawTurns } from './script.ts';
 import {
   TEST_DAY,
   arrivals,
@@ -149,6 +149,50 @@ describe('loadSpike', () => {
   });
 });
 
+describe('workloadShift', () => {
+  it('gives sessions starting in its window the shifted workload, and leaves the rest alone', () => {
+    const from = START + 9 * HOUR_MS;
+    const to = from + 30 * MINUTE_MS;
+    const cfg = testConfig({ analystsPerReplica: 40 });
+    const long = { turnsPerSessionMean: 8, messageTokensMedian: 600, outputTokensMedian: 1_200 };
+    const shift = (durationMs: number): Patch[] => [
+      { kind: 'event', atMs: from, event: { type: 'workloadShift', changes: long, durationMs } },
+    ];
+    const base = bySession(arrivals(simulate(fixedService(1_000), testInput(cfg)).state));
+    const shifted = bySession(
+      arrivals(simulate(fixedService(1_000), testInput(cfg, shift(to - from))).state),
+    );
+    expect([...shifted.keys()]).toEqual([...base.keys()]); // session starts never move
+    let inside = 0;
+    for (const [session, reqs] of shifted) {
+      const first = reqs[0]!;
+      if (!(first.arriveMs >= from && first.arriveMs < to)) {
+        expect(strip(reqs)).toEqual(strip(base.get(session)!));
+        continue;
+      }
+      inside++;
+      const { seed } = cfg;
+      const message = drawMessageTokens(seed, TEST_DAY, session, 1, 600, cfg.messageTokensSigma);
+      const output = drawOutputTokens(
+        seed,
+        TEST_DAY,
+        session,
+        1,
+        1_200,
+        cfg.outputTokensSigma,
+        cfg.outputTokensMax,
+      );
+      expect([first.prompt - first.sys, first.output]).toEqual([message, output]);
+      expect(strip(reqs)).not.toEqual(strip(base.get(session)!));
+    }
+    expect(inside).toBeGreaterThan(10);
+    for (const bad of [0, -1, NaN]) {
+      expect(() => sessionPlan(testInput(cfg, shift(bad)))).toThrow(RangeError);
+      expect(() => simulate(fixedService(1_000), testInput(cfg, shift(bad)))).toThrow(RangeError);
+    }
+  });
+});
+
 describe('sessionPlan', () => {
   it('matches the simulated arrivals exactly when service time is zero', () => {
     const cfg = testConfig(
@@ -169,6 +213,19 @@ describe('sessionPlan', () => {
     const patches: Patch[] = [
       { kind: 'set', atMs: START - HOUR_MS, changes: { messageTokensMedian: 400 } },
       { kind: 'set', atMs: START + 10 * HOUR_MS, changes: { turnsPerSessionMean: 12 } },
+      {
+        kind: 'event',
+        atMs: START + 10 * HOUR_MS + 30 * MINUTE_MS,
+        event: {
+          type: 'workloadShift',
+          changes: {
+            turnsPerSessionMean: 3,
+            messageTokensMedian: 1_500,
+            thinkTimeMedianMs: 60_000,
+          },
+          durationMs: 45 * MINUTE_MS,
+        },
+      },
       {
         kind: 'event',
         atMs: START + 11 * HOUR_MS,
@@ -240,6 +297,16 @@ describe('determinism and checkpoints (K21)', () => {
       atMs: START + 10 * HOUR_MS,
       event: { type: 'loadSpike', multiplier: 2, durationMs: 40 * MINUTE_MS },
     },
+    // Active across the 10:15 checkpoints below.
+    {
+      kind: 'event',
+      atMs: START + 10 * HOUR_MS + 5 * MINUTE_MS,
+      event: {
+        type: 'workloadShift',
+        changes: { turnsPerSessionMean: 8, outputTokensMedian: 900 },
+        durationMs: 30 * MINUTE_MS,
+      },
+    },
     {
       kind: 'set',
       atMs: START + 10 * HOUR_MS + 30 * MINUTE_MS,
@@ -289,6 +356,15 @@ describe('determinism and checkpoints (K21)', () => {
         kind: 'event',
         atMs: START + 10 * HOUR_MS + 20 * MINUTE_MS,
         event: { type: 'extraRequest', analyst: 1, promptTokens: 3_000, outputTokens: 10 },
+      },
+      {
+        kind: 'event',
+        atMs: START + 10 * HOUR_MS + 20 * MINUTE_MS,
+        event: {
+          type: 'workloadShift',
+          changes: { messageTokensMedian: 700, thinkTimeMedianMs: 30_000 },
+          durationMs: 25 * MINUTE_MS,
+        },
       },
     ];
     const forked = r.restoreDayRun({ ...input, patches: fork }, cp);

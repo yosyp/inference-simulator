@@ -12,7 +12,7 @@
 //
 // Scripts (script.ts). Keyed on (day, session, turn), with the workload parameters in effect at the
 // session's start (turn mean, medians, and the system prompt, which stays fixed for the session so
-// its KV blocks keep their identity): geometric turns, lognormal message and output lengths (output
+// its KV blocks keep their identity; shift.ts applies any workloadShift covering the start): geometric turns, lognormal message and output lengths (output
 // capped at outputTokensMax), log-logistic think time.
 //
 // Turns (client.ts). Turn N+1 arrives at max(turn N's arrival + think time, turn N's finish): the
@@ -36,7 +36,9 @@
 // whole prompt (the current system prompt's shared blocks included) and whose synthetic session id
 // is EXTRA_SESSION_BASE + n. 'tracked' resolves to input.trackedAnalyst, or to a keyed analyst when
 // none is tracked. Extra requests time out and retry like any other; they never count as sessions.
-// loadSpike: multiplies the intensity over [atMs, atMs + durationMs).
+// loadSpike: multiplies the intensity over [atMs, atMs + durationMs). workloadShift: sessions that
+// start in [atMs, atMs + durationMs) use its turn mean, medians, and think time in place of the params
+// in effect; overlapping shifts apply in patch order. Neither moves a session start or a keyed draw.
 //
 // Topics. Listens to firstToken and requestEnded (a = request slot). Emits requestState (atRouter)
 // and requestArrived for each new request, requestCancelled on a timeout, and

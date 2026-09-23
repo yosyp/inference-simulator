@@ -6,21 +6,19 @@
 // evicted and prefill it again. nvidia-smi reads 100% while compute utilization stays low, requests
 // served per minute hold level, and TTFT p99 climbs from well under a second to minutes.
 //
-// The burst of long conversations lasts 30 minutes: a second 'set' at 10:30 restores the everyday
-// workload, so the rest of the week stays clean (a lasting 'set' carries into later days). The
-// trigger is a lasting 'set' (there is no one-shot workload event yet), so firing it keeps long
-// conversations on from the playhead to Friday.
+// The burst is a one-shot workloadShift: conversations that start in the 30 minutes from 10:00 are
+// long, and later ones are ordinary again, so the rest of the week stays clean. The trigger is the
+// same event, so firing it replays a 30-minute burst from the playhead. Drawer changes to the
+// workload apply outside the burst; inside it, the burst's values win.
 
-import type { SimConfig, TunableParams } from '../../engine/api.ts';
-import { HOUR_MS, simMs } from '../../engine/time.ts';
+import type { InjectedEvent, SimConfig, TunableParams } from '../../engine/api.ts';
+import { HOUR_MS, MINUTE_MS, simMs } from '../../engine/time.ts';
 import type { StatusSnapshot } from '../../playback/types.ts';
 import type { Scenario, StatusTemplate } from '../schema.ts';
 
 /** Wednesday, the week's busiest day (dayMultipliers below). */
 const DAY = 2;
 const MOMENT = simMs(DAY, 10, 0);
-/** Sessions starting in [MOMENT, BURST_END) get the long workload. */
-const BURST_END = simMs(DAY, 10, 30);
 
 /** The everyday chat workload: short questions, a few turns. */
 const EVERYDAY = {
@@ -39,6 +37,9 @@ const LONG = {
   messageTokensMedian: 600,
   outputTokensMedian: 1_200,
 } satisfies Partial<TunableParams>;
+
+/** Conversations that start in the next 30 minutes are long drafting ones. */
+const BURST: InjectedEvent = { type: 'workloadShift', changes: LONG, durationMs: 30 * MINUTE_MS };
 
 export const sim: SimConfig = {
   seed: 1,
@@ -140,16 +141,13 @@ export const scenario: Scenario = {
   title: 'KV exhaustion',
   preset: { name: '1 GPU', replicas: 1, basis: 'measured' },
   sim,
-  baselinePatches: [
-    { kind: 'set', atMs: MOMENT, changes: LONG },
-    { kind: 'set', atMs: BURST_END, changes: EVERYDAY },
-  ],
+  baselinePatches: [{ kind: 'event', atMs: MOMENT, event: BURST }],
   lessonMoment: { atMs: MOMENT, label: 'Long drafting conversations begin' },
   // Five simulated minutes before the moment. At 50×, KV passes 90% about 35 s after Play.
   entry: { atMs: simMs(DAY, 9, 55), speed: 50 },
   trigger: {
     label: 'Start long conversations',
-    patch: { kind: 'set', changes: LONG },
+    patch: { kind: 'event', event: BURST },
   },
   // An analyst in a conversation that is still going when the pool is full.
   tracked: { rule: 'spansMoment', momentMs: simMs(DAY, 10, 25), minTurnsAfter: 2 },
@@ -158,7 +156,7 @@ export const scenario: Scenario = {
     {
       param: 'outputTokensMedian',
       label: 'Output length (median tokens)',
-      help: 'Applies to conversations that start after the change.',
+      help: 'Applies to conversations that start after the change. A burst of long conversations uses its own values.',
       control: { kind: 'range', min: 100, max: 2_000, step: 100 },
     },
     {
@@ -188,7 +186,7 @@ export const scenario: Scenario = {
     ],
     tryThis: [
       'Pause when KV passes 90% and switch to 5×. Dots turn to the preempted state and go back to the queue.',
-      'Just after 10:00, set Turns per conversation to 4 in the drawer. Shorter conversations carry less history, and the pool never stays full.',
+      'Just after 10:00, set Load to 0.5× in the drawer. Half as many conversations start. The pool still peaks near 95%, but nothing is preempted and TTFT p99 stays around 5 s.',
       "Switch to High side after Thursday 12:00. Wednesday's bars show a higher mean latency and about 63% utilization, which reads as headroom. KV isn't collected.",
     ],
   },

@@ -150,7 +150,7 @@ bytes ≈ 16.06 GB weights + 128 KiB × (context tokens attended across the batc
   - Retry policies are immediate, fixed, exponential, and full jitter. Jitter is keyed by (request, attempt). Max retries is a parameter.
   - When a turn exhausts its retries, it fails and the analyst abandons the session, sending no further turns. Abandoned sessions are counted.
   - Failed, aborted, and rejected turns never enter session history.
-- **Incident injection:** each tab's one-click trigger (§10).
+- **Incident injection:** each tab's one-click trigger (§10). Two one-shot events cover a window [t, t + duration) of their day: loadSpike multiplies the session-start rate, and workloadShift gives sessions that start in the window their own turn count, message and output lengths, and think time in place of the parameters in effect (overlapping shifts apply in patch order).
 
 Default parameter values are set during the build and documented in code.
 

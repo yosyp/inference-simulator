@@ -19,6 +19,7 @@ import { EXTRA_SESSION_BASE, LOAD_KIND, LOAD_PRIORITY } from './ids.ts';
 import { assertLoadInvariants } from './invariants.ts';
 import { drawTurns, sessionSystemPrompt } from './script.ts';
 import { createSessionTable, openSession, type SessionTable } from './sessions.ts';
+import { shiftedParams, workloadShiftAt, type WorkloadShift } from './shift.ts';
 
 /** Counts since the day's start, for tests and tooling. E9 observes requests through topics. */
 export interface LoadStats {
@@ -45,6 +46,8 @@ export interface LoadSlice {
   spikeEndEv: number[];
   /** Product of the active spikes' multipliers. */
   spikeProduct: number;
+  /** workloadShift events so far today, in patch order; ended ones stay (they cover no start). */
+  shifts: WorkloadShift[];
   /** Extra requests injected so far today. */
   extrasInjected: number;
   sessions: SessionTable;
@@ -70,7 +73,7 @@ function scheduleCandidate(L: LoadSlice, ctx: Ctx): void {
 /** An accepted candidate: a new session whose first turn arrives now. */
 function startSession(state: DayState, ctx: Ctx, session: number): void {
   const L = state.load;
-  const p = state.core.params;
+  const p = shiftedParams(state.core.params, L.shifts, ctx.nowMs);
   const cfg = ctx.input.config;
   const seed = cfg.seed;
   const day = ctx.input.day;
@@ -81,7 +84,8 @@ function startSession(state: DayState, ctx: Ctx, session: number): void {
   S.analyst[rec] = uniformInt(u01(seed, Source.sessionAnalyst, day, session), analysts);
   S.kind[rec] = REQUEST_KIND.turn;
   S.startMs[rec] = ctx.nowMs;
-  // Workload parameters are those in effect at the session's start (TunableParams).
+  // Workload parameters are those in effect at the session's start (TunableParams), with any
+  // workloadShift covering the start applied.
   S.turns[rec] = drawTurns(seed, day, session, p.turnsPerSessionMean);
   S.systemPrompt[rec] = sessionSystemPrompt(
     p.systemPromptTokens,
@@ -184,6 +188,7 @@ export const loadModule = defineModule({
       spikeActive: [],
       spikeEndEv: [],
       spikeProduct: 1,
+      shifts: [],
       extrasInjected: 0,
       sessions: createSessionTable(),
       recOfSlot: new Int32Array(0),
@@ -261,6 +266,8 @@ export const loadModule = defineModule({
     if (event.type === 'extraRequest') injectExtra(state, ctx, event);
     else if (event.type === 'loadSpike')
       injectSpike(state, ctx, event.multiplier, event.durationMs);
+    else if (event.type === 'workloadShift')
+      state.load.shifts.push(workloadShiftAt(event, ctx.nowMs));
   },
   assertInvariants: assertLoadInvariants,
 });

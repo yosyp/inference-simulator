@@ -3,7 +3,8 @@
 //
 // It walks the same candidate process as the module, starting from dayStartParams(input) and
 // applying the day's patches in time order as the simulation would: 'set' patches change the
-// parameters later sessions start with, and loadSpike events scale the intensity for their duration.
+// parameters later sessions start with, loadSpike events scale the intensity for their duration,
+// and workloadShift events override the workload of sessions starting in their window.
 // A session's plan is what it does when every request finishes the instant it arrives: turn N+1 at
 // turn N's arrival plus think time, ending at the shift's end or when the context is full. So with
 // zero service time the simulated arrivals match the plan exactly; under load, later turns drift
@@ -29,6 +30,7 @@ import {
   fitOutput,
   sessionSystemPrompt,
 } from './script.ts';
+import { shiftedParams, workloadShiftAt, type WorkloadShift } from './shift.ts';
 
 export function sessionPlan(input: DayRunInput): SessionSummary[] {
   const cfg = input.config;
@@ -41,6 +43,7 @@ export function sessionPlan(input: DayRunInput): SessionSummary[] {
   const dayEnd = dayStartMs(day) + DAY_MS;
   const spikeMult: number[] = [];
   const spikeEnd: number[] = [];
+  const shifts: WorkloadShift[] = [];
   const analysts = cfg.analystsPerReplica * cfg.replicas;
   const out: SessionSummary[] = [];
   let next = 0;
@@ -55,7 +58,7 @@ export function sessionPlan(input: DayRunInput): SessionSummary[] {
       else if (p.event.type === 'loadSpike') {
         spikeMult.push(p.event.multiplier);
         spikeEnd.push(p.atMs + p.event.durationMs);
-      }
+      } else if (p.event.type === 'workloadShift') shifts.push(workloadShiftAt(p.event, p.atMs));
     }
     // A spike's end runs before a candidate at the same instant (LOAD_PRIORITY).
     let product = 1;
@@ -66,7 +69,7 @@ export function sessionPlan(input: DayRunInput): SessionSummary[] {
       continue;
     const session = cursor.index;
     const analyst = uniformInt(u01(seed, Source.sessionAnalyst, day, session), analysts);
-    out.push(planSession(input, params, session, analyst, t));
+    out.push(planSession(input, shiftedParams(params, shifts, t), session, analyst, t));
   }
   return out;
 }
