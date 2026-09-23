@@ -1,6 +1,9 @@
-// Micro-benchmarks for the KV block manager. Skipped unless KV_BENCH is set:
-//   KV_BENCH=1 pnpm vitest run --project node src/engine/kv/bench.test.ts
+// Micro-benchmarks for the KV block manager. Skipped unless KV_BENCH is set (the verbose reporter
+// shows the output):
+//   KV_BENCH=1 pnpm vitest run --project node src/engine/kv/bench.test.ts --reporter=verbose
 // Pool: the provisional calibration's 140,000 tokens at block size 16 (8,750 blocks).
+// Vitest's module runner calls across modules through namespace objects, so these read about 2–3×
+// slower than the same code under plain Node ESM or in the bundled worker.
 
 import { serialize } from 'node:v8';
 import { describe, expect, it } from 'vitest';
