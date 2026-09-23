@@ -19,7 +19,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E10 Oracle | todo | | |
 | E11 Assembly and worker | todo | | |
 | U1 Tokens and shell | running | | |
-| U2 Store and engine client | running | | Split: the results index is U8 |
+| U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
 | U3 Canvas | todo | | |
 | U4 Charts | todo | | |
 | U5 Timeline | todo | | |
