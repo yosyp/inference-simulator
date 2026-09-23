@@ -1,14 +1,16 @@
-// The app: the shell (U1) with the tabs, toolbar, drawer, intro modal, and sidebar (U6).
-// Canvas (U3), charts (U4), timeline (U5), and rollup table (U7) are placeholders until X1.
+// The app: the shell (U1) with the tabs, toolbar, drawer, intro modal, and sidebar (U6), the canvas
+// (U3), charts (U4), and week timeline (U5). The rollup table (U7) is a placeholder until it lands.
 
 import { useState } from 'react';
 import { calibration as appCalibration } from './data/calibration.ts';
 import type { Calibration } from './engine/calibration.ts';
+import { ChartStack } from './charts/index.ts';
 import { fixtureScenarios } from './fixtures/scenarios.ts';
 import { createFixturePlaybackStore } from './playback/fixture-store.ts';
 import type { PlaybackState, PlaybackStore } from './playback/types.ts';
 import { usePlaybackSelector } from './playback/use-playback-selector.ts';
 import type { Scenario } from './scenarios/schema.ts';
+import { SimCanvas } from './sim-view/index.ts';
 import {
   ControlPanel,
   IntroModal,
@@ -18,6 +20,7 @@ import {
 } from './ui/chrome/index.ts';
 import { AppShell } from './ui/shell/index.ts';
 import { Sidebar } from './ui/sidebar/index.ts';
+import { WeekTimeline } from './ui/timeline/index.ts';
 
 // --- Wiring. X1: swap these two for the scenario registry and the worker-backed store. -----------
 
@@ -75,30 +78,9 @@ export function App(props: AppProps) {
           />
         }
         toolbar={<ControlPanel store={store} run={run} />}
-        canvas={
-          <SlotPlaceholder
-            title="Canvas"
-            owner="U3"
-            detail="Router, replicas, KV tanks, request dots"
-            className="absolute inset-2"
-          />
-        }
-        charts={
-          <div className="flex flex-col px-2 py-1">
-            {['Chart 1 · Latency', 'Chart 2 · Memory', `Chart 3 · ${run.scenario.chart3}`].map(
-              (title) => (
-                <div key={title} className="h-(--layout-chart-h) py-1">
-                  <SlotPlaceholder title={title} owner="U4" className="h-full" />
-                </div>
-              ),
-            )}
-          </div>
-        }
-        timeline={
-          <div className="flex h-(--layout-timeline-h) p-2">
-            <SlotPlaceholder title="Week timeline" owner="U5" className="flex-1" />
-          </div>
-        }
+        canvas={<SimCanvas store={store} />}
+        charts={<ChartStack store={store} />}
+        timeline={<WeekTimeline store={store} />}
         sidebar={
           <Sidebar
             store={store}

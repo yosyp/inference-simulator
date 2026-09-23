@@ -48,16 +48,14 @@ describe('App', () => {
     expect(screen.getByRole('dialog', { name: 'Inference Simulator' })).toBeInTheDocument();
   });
 
-  it('fills the canvas, charts, and timeline slots with labelled placeholders', async () => {
+  it('mounts the canvas, charts, and week timeline', async () => {
     const { user } = setup();
     await dismissIntro(user);
+    const sim = screen.getByRole('region', { name: 'Simulation' });
+    expect(within(sim).getByRole('img')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Charts' }).querySelector('svg')).not.toBeNull();
     expect(
-      within(screen.getByRole('region', { name: 'Simulation' })).getByText('Canvas'),
-    ).toBeInTheDocument();
-    const charts = screen.getByRole('region', { name: 'Charts' });
-    expect(charts.querySelectorAll('[data-placeholder="U4"]')).toHaveLength(3);
-    expect(
-      within(screen.getByRole('region', { name: 'Week timeline' })).getByText('Week timeline'),
+      within(screen.getByRole('region', { name: 'Week timeline' })).getByRole('slider'),
     ).toBeInTheDocument();
   });
 

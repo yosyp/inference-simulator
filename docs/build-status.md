@@ -25,7 +25,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | U4 Charts | merged | main | `<ChartStack store={store} />`; defaults from `store.scenario`; ~30 index queries per render at 8 replicas (X1 measures at 1000×). K33. |
 | U5 Timeline | merged | main | `WeekTimeline({ store })`, 72 px; playhead moves per frame without React re-renders; K31. Incident markers other than the lesson moment aren't drawn (tabs 5–6: the lesson moment is the incident). |
 | U6 Chrome and sidebar | merged | main | `pnpm e2e` now exercises every tab, modal, play, toggle, drawer, reset. X1 swaps `createAppScenarios`/`createAppStore` and the `SlotPlaceholder`s in App.tsx, and keeps one of the two clocks (toolbar vs timeline). Tooltip fixed (no open on click-focus). Toolbar token 78 px. X3: intro says 'Calibrated on…' while calibration is provisional. |
-| U7 High side | todo | | |
+| U7 High side | running | | |
 | U8 Results index | merged | main | `createResultsStore(replicas)`; whole-week chart redraw ~30 ms for 72 queries; detail memory unbounded by default (~3 MB per 10-min Server B window; `maxDetailChunks` if needed). X1: pass `createResults: createResultsStore`. |
 | C1 Runner | todo | | |
 | C2 Tabs 1–3 | todo | | |
@@ -39,7 +39,8 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | I3 Deploy workflow | merged | main | deploy.yml calls ci.yml (workflow_call); build job has no id-token; deploy never cancelled; ci concurrency split per workflow |
 | I4 CSP smoke test | merged | main | `scripts/serve-prod.ts` + `e2e/`; optional steps marked IF PRESENT for X1 to harden; negative checks (inline style, blob worker, fetch) all fail as expected |
 | I5 First deploy | todo | | Author runs |
-| X1–X5 | todo | | |
+| X1 Vertical slice | partial | main | Done: SimCanvas, ChartStack, WeekTimeline mounted in App.tsx on the fixture store; verify and e2e pass. Left: U7 rollup table in the sidebar slot; swap to the worker store (E11) and scenario registry (C2); keep one of the two clocks (toolbar vs timeline); harden e2e IF PRESENT steps; measure §8 budgets in Chrome. |
+| X2–X5 | todo | | |
 
 ## Measurements
 
