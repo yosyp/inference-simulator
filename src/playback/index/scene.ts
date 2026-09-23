@@ -26,7 +26,7 @@ import type {
 import { dotStreamAt, type DayData } from './day.ts';
 import { activeAt } from './dots.ts';
 import { DOT_STATE, trackedView } from './records.ts';
-import { bucketIn, entryAt, type SlotIndex } from './slots.ts';
+import { bucketIn, entryAt, forEachRun, type SlotIndex } from './slots.ts';
 
 export interface StoreState {
   replicas: number;
@@ -51,8 +51,9 @@ class Around {
     this.index = index;
     const bucketMs = index.bucketMs;
     if (bucketMs === 0) {
-      this.g = 0;
-      this.g0 = 1;
+      // No buckets yet: an empty window, so every level and rate is NaN.
+      this.g = -1;
+      this.g0 = 0;
       return;
     }
     this.g = Math.floor(t / bucketMs);
@@ -67,16 +68,18 @@ class Around {
     return e.block.data[metric][bucketIn(this.index, e, this.g) * e.block.series + series]!;
   }
 
-  /** Sum over [from, g] and the milliseconds of buckets present. */
+  /** Sum over slots [from, g] and the milliseconds of buckets present. */
   sum(metric: ScalarMetric, series: number, from = this.g0): { sum: number; ms: number } {
     let sum = 0;
     let n = 0;
-    for (let g = from; g <= this.g; g++) {
-      const e = entryAt(this.index, g);
-      if (!e || series >= e.block.series) continue;
-      sum += e.block.data[metric][bucketIn(this.index, e, g) * e.block.series + series]!;
-      n++;
-    }
+    forEachRun(this.index, from, this.g + 1, (block, bucket, count) => {
+      if (series >= block.series) return;
+      const data = block.data[metric];
+      for (let k = 0, i = bucket * block.series + series; k < count; k++, i += block.series) {
+        sum += data[i]!;
+      }
+      n += count;
+    });
     return { sum, ms: n * this.index.bucketMs };
   }
 

@@ -65,9 +65,14 @@ function snapshot(s: DotStream, atMs: SimMs): void {
   s.sinceSnap = 0;
 }
 
-/** Appends the next source in time order: its transitions, then its records' end times. */
+/**
+ * Appends the next source in time order. Record end times are merged into the walk by time (a
+ * record ending at t applies after transitions at t), so snapshots hold only requests that are
+ * really in flight.
+ */
 export function appendSource(s: DotStream, src: Source): void {
   const tb = src.chunk.transitions;
+  const rb = src.chunk.requests;
   const n = src.tr.n;
   if (s.total + n > s.end.length) {
     const grown = new Float64Array(Math.max(s.total + n, s.end.length * 2));
@@ -78,10 +83,25 @@ export function appendSource(s: DotStream, src: Source): void {
   s.len.push(n);
   s.sources.push(src);
   const { end, open } = s;
+  let r = 0;
+  /** Closes the open segment of each request whose record ends before `beforeMs`. */
+  const endRecords = (beforeMs: number) => {
+    for (; r < src.req.n; r++) {
+      const k = at(src.req, r);
+      const endMs = rb.endMs[k]!;
+      // NaN end times sort last; they close nothing.
+      if (!(endMs < beforeMs)) return;
+      const prev = open.get(rb.id[k]!);
+      if (prev === undefined) continue;
+      end[prev] = endMs;
+      open.delete(rb.id[k]!);
+    }
+  };
   for (let p = 0; p < n; p++) {
     const k = at(src.tr, p);
-    const g = s.total++;
     const t = tb.atMs[k]!;
+    endRecords(t);
+    const g = s.total++;
     const request = tb.request[k]!;
     const prev = open.get(request);
     if (prev !== undefined) end[prev] = t;
@@ -94,16 +114,7 @@ export function appendSource(s: DotStream, src: Source): void {
     }
     if (++s.sinceSnap >= SNAPSHOT_EVERY) snapshot(s, t);
   }
-  const rb = src.chunk.requests;
-  for (let p = 0; p < src.req.n; p++) {
-    const k = at(src.req, p);
-    const request = rb.id[k]!;
-    const prev = open.get(request);
-    const endMs = rb.endMs[k]!;
-    if (prev === undefined || !Number.isFinite(endMs)) continue;
-    end[prev] = endMs;
-    open.delete(request);
-  }
+  endRecords(Infinity);
 }
 
 function rebuild(s: DotStream, sources: readonly Source[]): void {
