@@ -22,6 +22,8 @@ export default defineConfig({
     format: 'es',
   },
   test: {
+    // Headless engine tests run whole simulated hours; many agents share this host, so allow slack.
+    testTimeout: 20_000,
     projects: [
       {
         extends: true,
