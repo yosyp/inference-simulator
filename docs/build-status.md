@@ -17,7 +17,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E8 Failure | todo | | |
 | E9 Metrics | running | | Parameterized; S1's storage recommendations fold in after G1 |
 | E10 Oracle | todo | | |
-| E11 Assembly and worker | todo | | |
+| E11 Assembly and worker | todo | | Must follow protocol.ts ordering and detail-chunk rules (U2, U8 handoffs) |
 | U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
 | U3 Canvas | running | | |
@@ -25,7 +25,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | U5 Timeline | running | | |
 | U6 Chrome and sidebar | running | | |
 | U7 High side | todo | | |
-| U8 Results index | running | | Split from U2 at kickoff |
+| U8 Results index | merged | main | `createResultsStore(replicas)`; whole-week chart redraw ~30 ms for 72 queries; detail memory unbounded by default (~3 MB per 10-min Server B window; `maxDetailChunks` if needed). X1: pass `createResults: createResultsStore`. |
 | C1 Runner | todo | | |
 | C2 Tabs 1–3 | todo | | |
 | C3 Tabs 4–6 | todo | | |

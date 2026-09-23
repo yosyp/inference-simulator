@@ -115,7 +115,7 @@ export interface RequestBlock {
   attempt: Uint8Array;
   /** -1 if never dispatched. */
   replica: Int8Array;
-  /** Replica that served the session's previous turn; -1 on the first turn. Moved = replica !== prevReplica. */
+  /** Replica that served the session's previous turn; -1 on the first turn. Moved = prevReplica !== -1 && replica !== prevReplica. */
   prevReplica: Int8Array;
   arriveMs: Float64Array;
   dispatchMs: Float64Array;

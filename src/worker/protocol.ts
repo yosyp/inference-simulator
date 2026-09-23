@@ -55,7 +55,13 @@ export type MainToWorker =
   | { type: 'focus'; runId: number; atMs: SimMs }
   | { type: 'fork'; runId: number; revision: number; patch: Patch }
   | { type: 'reset'; runId: number; focusMs: SimMs }
-  /** Re-simulate [fromMs, toMs) with detail 'all' for canvas dots (02 §11, K7). Answered with 'detail'. */
+  /**
+   * Re-simulate [fromMs, toMs) with detail 'all' for canvas dots (02 §11, K7). Answered with one
+   * 'detail' per requestTag. The detail chunk must place every request already in flight at fromMs:
+   * a synthetic transition at fromMs with its current state and replica (or its earlier transitions,
+   * plus records for any that end in the window). Otherwise long-running requests vanish as dots at
+   * the start of each window.
+   */
   | { type: 'requestDetail'; runId: number; requestTag: number; fromMs: SimMs; toMs: SimMs }
   /** Change the tracked analyst; the worker answers with 'trace' chunks for the computed days. */
   | { type: 'track'; runId: number; analyst: AnalystId | null };
