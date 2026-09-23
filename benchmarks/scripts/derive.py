@@ -17,6 +17,19 @@ Fits:
   (the simulator's router constant covers it). Relative least squares; r has a closed form
   for each η_c, η_c is a golden-section search.
 - Split check (03 open item 3): the same fit with separate GEMM and attention efficiencies.
+
+X4a adds three terms outside the roofline (costModel, optional, default 0):
+
+    step_ms += decodePerSeqMs · decode seqs + cachedTokenMs · cached tokens admitted this step
+    TTFT    += requestOverheadMs (once per request, before it can be scheduled)
+
+- Joint fit: over all of R2, ITL = t_o + d·B + max(compute, memory) is linear in (d, 1/η_b) once
+  each point's binding term is known, so solve that by least squares for the current η_c, refit
+  η_c and r on R1 with the new η_b, and repeat until it settles. r is requestOverheadMs. t_o stays
+  at the batch <= 8 intercept above: freed, it drifts to about -0.1 ms (the loss is flat in t_o
+  once d is in), and the schema needs it positive.
+- cachedTokenMs (R6): least squares through the origin of warm TTFT minus the model's, on the
+  cached prefix.
 """
 
 from __future__ import annotations
@@ -93,11 +106,18 @@ class Model:
     def decode_step(self, b: int, ctx_sum: float) -> tuple[float, float, float]:
         return 2 * self.params * b, self.attn_per_pair * ctx_sum, self.W + self.kv * (ctx_sum + b)
 
-    def step_ms(self, work, eta_g, eta_a, eta_b, t_o) -> float:
+    def step_ms(self, work, eta_g, eta_a, eta_b, t_o, extra: float = 0.0) -> float:
+        """`extra` is the X4a time outside the roofline: d·decode seqs + c·cached tokens admitted."""
         gf, af, by = work
         compute = (gf / (eta_g * self.peak) + af / (eta_a * self.peak)) * 1e3
         memory = by / (eta_b * self.bw) * 1e3
-        return t_o + max(compute, memory)
+        return t_o + extra + max(compute, memory)
+
+    def compute_ms(self, work, eta_c) -> float:
+        return (work[0] + work[1]) / (eta_c * self.peak) * 1e3
+
+    def memory_ms(self, work, eta_b) -> float:
+        return work[2] / (eta_b * self.bw) * 1e3
 
     def chunks(self, prompt: int, chunk: int, cached: int = 0) -> list[tuple[float, float, float]]:
         out, prior = [], min(cached, prompt - 1)
@@ -123,6 +143,20 @@ def golden(f, lo: float, hi: float, tol: float = 1e-6) -> float:
             d = a + g * (b - a)
             fd = f(d)
     return (a + b) / 2
+
+
+def lstsq(rows: list[list[float]], ys: list[float]) -> list[float]:
+    """Ordinary least squares by the normal equations (few unknowns, well scaled by the caller)."""
+    k = len(rows[0])
+    a = [[sum(r[i] * r[j] for r in rows) for j in range(k)] + [sum(r[i] * y for r, y in zip(rows, ys))] for i in range(k)]
+    for c in range(k):
+        piv = max(range(c, k), key=lambda i: abs(a[i][c]))
+        a[c], a[piv] = a[piv], a[c]
+        for i in range(k):
+            if i != c:
+                f = a[i][c] / a[c][c]
+                a[i] = [x - f * y for x, y in zip(a[i], a[c])]
+    return [a[i][k] / a[i][i] for i in range(k)]
 
 
 def linfit(xs: list[float], ys: list[float]) -> tuple[float, float, float]:
@@ -190,6 +224,7 @@ def decode_points(m: dict, run_dir: Path) -> list[dict]:
                 "ctx": ctx,
                 "itl_ms": median_itl_ms(b),
                 "tpot_mean_ms": b.get("mean_tpot_ms"),
+                "tpot_p50_ms": b.get("median_tpot_ms"),
                 "power": p.get("power"),
             }
         )
@@ -255,6 +290,55 @@ def fit_prefill(model: Model, pts, chunk, eta_b, t_o, split: bool):
     S = sums(eg, ea)
     r = best_r(S)
     return {"eta_g": eg, "eta_a": ea, "r": r, "pred": [r + s for s in S], "pred_no_r": S, "rms_rel": math.sqrt(loss(S, r) / len(meas))}
+
+
+class Fit:
+    """One set of cost-model numbers. The B3 fit has d = c = 0."""
+
+    def __init__(self, eta_c, eta_b, t_o, r, d=0.0, c=0.0):
+        self.eta_c, self.eta_b, self.t_o, self.r, self.d, self.c = eta_c, eta_b, t_o, r, d, c
+
+    def decode_ms(self, model: Model, batch: int, ctx_sum: float) -> float:
+        return model.step_ms(model.decode_step(batch, ctx_sum), self.eta_c, self.eta_c, self.eta_b, self.t_o, self.d * batch)
+
+    def ttft_ms(self, model: Model, prompt: int, chunk: int, cached: int = 0, with_r: bool = True) -> float:
+        hits = min(cached, prompt - 1)
+        steps = [
+            model.step_ms(w, self.eta_c, self.eta_c, self.eta_b, self.t_o, self.c * hits if k == 0 else 0.0)
+            for k, w in enumerate(model.chunks(prompt, chunk, cached))
+        ]
+        return (self.r if with_r else 0.0) + sum(steps)
+
+
+def fit_joint(model: Model, dpts, ppts, chunk, eta_c, eta_b, t_o):
+    """X4a: d and η_b from all of R2 given η_c (t_o held); η_c and r from R1; repeat until settled."""
+    for it in range(100):
+        rows, ys = [], []
+        for p in dpts:
+            w = model.decode_step(p["batch"], p["batch"] * p["ctx"])
+            comp, mem = model.compute_ms(w, eta_c), model.memory_ms(w, eta_b)
+            # Unknowns (d, k) with memory_ms = k · bytes/1e9; bytes scaled to keep the system well conditioned.
+            if comp > mem:
+                rows.append([p["batch"], 0.0])
+                ys.append(p["itl_ms"] - t_o - comp)
+            else:
+                rows.append([p["batch"], w[2] / 1e9])
+                ys.append(p["itl_ms"] - t_o)
+        d, k = lstsq(rows, ys)
+        eb_new = 1e3 / (k / 1e9 * model.bw)
+        single = fit_prefill(model, ppts, chunk, eb_new, t_o, split=False)
+        done = abs(single["eta_g"] - eta_c) < 1e-7 and abs(eb_new - eta_b) < 1e-7
+        eta_c, eta_b = single["eta_g"], eb_new
+        if done:
+            break
+    res = [(p["itl_ms"] - Fit(eta_c, eta_b, t_o, 0, d).decode_ms(model, p["batch"], p["batch"] * p["ctx"])) for p in dpts]
+    my = statistics.fmean(p["itl_ms"] for p in dpts)
+    r2 = 1 - sum(x * x for x in res) / sum((p["itl_ms"] - my) ** 2 for p in dpts)
+    return {"eta_c": eta_c, "eta_b": eta_b, "t_o": t_o, "d": d, "r": single["r"], "r2": r2, "iterations": it + 1, "single": single}
+
+
+def rms(xs: list[float]) -> float:
+    return math.sqrt(sum(x * x for x in xs) / len(xs)) if xs else float("nan")
 
 
 def attn_share(model: Model, prompt: int, chunk: int) -> float:
@@ -329,6 +413,16 @@ def main() -> int:
     split = fit_prefill(model, ppts, chunk, eta_b, t_o, split=True)
     eta_c = single["eta_g"]
 
+    # X4a: the joint fit with the per-sequence term, then the cached-token term from R6.
+    b3 = Fit(eta_c, eta_b, t_o, single["r"])
+    b3_sim = Fit(eta_c, eta_b, t_o, 0.0)  # what the simulator computed before X4a: no r
+    joint = fit_joint(model, dpts, ppts, chunk, eta_c, eta_b, t_o)
+    x4 = Fit(joint["eta_c"], joint["eta_b"], joint["t_o"], joint["r"], joint["d"])
+    for p in dpts:
+        p["pred_x4_ms"] = x4.decode_ms(model, p["batch"], p["batch"] * p["ctx"])
+        w = model.decode_step(p["batch"], p["batch"] * p["ctx"])
+        p["bound_x4"] = "compute" if model.compute_ms(w, x4.eta_c) > model.memory_ms(w, x4.eta_b) else "memory"
+
     # Decode check across the whole R2 sweep with the fitted numbers.
     for p in dpts:
         w = model.decode_step(p["batch"], p["batch"] * p["ctx"])
@@ -358,6 +452,13 @@ def main() -> int:
             row["pred_warm_ms"] = single["r"] + sum(model.step_ms(w, eta_c, eta_c, eta_b, t_o) for w in model.chunks(total, chunk, cached=plen))
             row["pred_cold_ms"] = single["r"] + sum(model.step_ms(w, eta_c, eta_c, eta_b, t_o) for w in model.chunks(total, chunk))
             r6_rows.append(row)
+        warm_rows = [r for r in r6_rows if r["warm_ms"]]
+        excess = [(r["prefix"], r["warm_ms"] - x4.ttft_ms(model, r["prefix"] + r["suffix"], chunk, cached=r["prefix"])) for r in warm_rows]
+        x4.c = sum(x * e for x, e in excess) / sum(x * x for x, _ in excess)
+        for r in r6_rows:
+            total = r["prefix"] + r["suffix"]
+            r["pred_warm_x4_ms"] = x4.ttft_ms(model, total, chunk, cached=r["prefix"])
+            r["pred_cold_x4_ms"] = x4.ttft_ms(model, total, chunk)
         mix = {p["id"]: p for p in points(m6, "mix")}
         ref = next((r for r in r6_rows if r["prefix"] == 8192), r6_rows[-1] if r6_rows else None)
         if ref and ref["cold_ms"]:
@@ -390,9 +491,12 @@ def main() -> int:
         "model": prov["model"],
         "engine": engine,
         "costModel": {
-            "computeEfficiency": round(eta_c, 4),
-            "bandwidthEfficiency": round(eta_b, 4),
-            "stepOverheadMs": round(t_o, 3),
+            "computeEfficiency": round(x4.eta_c, 4),
+            "bandwidthEfficiency": round(x4.eta_b, 4),
+            "stepOverheadMs": round(x4.t_o, 3),
+            "decodePerSeqMs": round(x4.d, 4),
+            "cachedTokenMs": round(x4.c, 6),
+            "requestOverheadMs": round(x4.r, 2),
         },
         "coldStartMs": cold_start,
         "prefixCache": prefix,
@@ -404,14 +508,14 @@ def main() -> int:
     # ------------------------------------------------------------------ report
     L: list[str] = []
     w = L.append
-    w("# Calibration fit report (B3)")
+    w("# Calibration fit report (B3, X4a)")
     w("")
     w("Generated by `scripts/derive.py` from the raw runs below. Rerun it to reproduce this file and")
     w("`calibration.measured.json`. Model: 02 §6 and `src/engine/cost/step.ts`.")
     w("")
     w("| Run | Directory | Used for |")
     w("|---|---|---|")
-    feeds = {"R0": "engine constants", "R1": "η_c", "R2": "η_b, t_o; decode check", "R6": "prefix cache", "R7": "cold start"}
+    feeds = {"R0": "engine constants", "R1": "η_c, requestOverheadMs", "R2": "η_b, t_o, decodePerSeqMs", "R6": "cachedTokenMs; prefix cache", "R7": "cold start"}
     for k in sorted(runs):
         if k in feeds:
             w(f"| {k} | `raw/{runs[k].name}` | {feeds[k]} |")
@@ -420,10 +524,13 @@ def main() -> int:
     w("")
     w("| Field | Provisional | Measured | Source |")
     w("|---|---|---|---|")
-    pc, pe = prov["costModel"], prov["engine"]
-    w(f"| η_c `computeEfficiency` | {pc['computeEfficiency']} | {cal['costModel']['computeEfficiency']} | R1 fit |")
-    w(f"| η_b `bandwidthEfficiency` | {pc['bandwidthEfficiency']} | {cal['costModel']['bandwidthEfficiency']} | R2 fit |")
-    w(f"| t_o `stepOverheadMs` | {pc['stepOverheadMs']} | {cal['costModel']['stepOverheadMs']} | R2 fit |")
+    pc, pe, cm = prov["costModel"], prov["engine"], cal["costModel"]
+    w(f"| η_c `computeEfficiency` | {pc['computeEfficiency']} | {cm['computeEfficiency']} (B3: {eta_c:.4f}) | R1, joint with R2 |")
+    w(f"| η_b `bandwidthEfficiency` | {pc['bandwidthEfficiency']} | {cm['bandwidthEfficiency']} (B3: {eta_b:.4f}) | R2, joint with R1 |")
+    w(f"| t_o `stepOverheadMs` | {pc['stepOverheadMs']} | {cm['stepOverheadMs']} | R2 batch ≤ 8 intercept |")
+    w(f"| `decodePerSeqMs` | absent (0) | {cm['decodePerSeqMs']} | R2, joint fit |")
+    w(f"| `cachedTokenMs` | absent (0) | {cm['cachedTokenMs']} | R6 warm excess |")
+    w(f"| `requestOverheadMs` | absent (0) | {cm['requestOverheadMs']} | R1 intercept r |")
     for k in ("kvPoolTokens", "blockSize", "maxNumSeqs", "maxNumBatchedTokens", "maxModelLen"):
         w(f"| `engine.{k}` | {pe[k]:,} | {engine[k]:,} | R0 |")
     for k, v in cold_start.items():
@@ -434,9 +541,72 @@ def main() -> int:
     w("Cold start is weights loaded / engine ready, in ms from process spawn. Engine ready is the")
     w("first `/health` 200.")
     w("")
-    w("Per-request overhead r, which the step model doesn't include, fitted from R1:")
-    w(f"**{single['r']:.1f} ms**. It covers HTTP, tokenization, scheduling latency and streaming the")
-    w("first token. The simulator's fixed router constant is where it belongs (03 §4).")
+    w("The last three are X4a's terms outside the roofline; the simulator reads them as 0 when absent.")
+    w("`decodePerSeqMs` is added to a step per decode sequence, `cachedTokenMs` to the step that admits")
+    w("a request per prefix-cache hit token, and `requestOverheadMs` once per request between dispatch and")
+    w("the scheduler seeing it (HTTP, tokenization; it stands in for streaming the first token too).")
+    w("")
+    x4_rows_r2 = [p["pred_x4_ms"] / p["itl_ms"] - 1 for p in dpts]
+    b3_rows_r2 = [p["pred_ms"] / p["itl_ms"] - 1 for p in dpts]
+    big_i = [i for i, p in enumerate(dpts) if p["batch"] >= 16]
+    x4_r1 = [x4.ttft_ms(model, p["prompt"], chunk) / p["ttft_ms"] - 1 for p in ppts]
+    b3sim_r1 = [single["pred_no_r"][i] / p["ttft_ms"] - 1 for i, p in enumerate(ppts)]
+    b3_r1 = [single["pred"][i] / p["ttft_ms"] - 1 for i, p in enumerate(ppts)]
+    w("## X4a: residuals before and after")
+    w("")
+    w(f"Joint fit: {joint['iterations']} rounds of R2 (d, η_b) and R1 (η_c, r); R2 r² {joint['r2']:.4f}. Residual = predicted ÷ measured − 1.")
+    w("\"B3 simulator\" is what the engine computed before X4a: the B3 numbers with no per-request overhead.")
+    w("")
+    w("| Set | Points | B3 simulator: RMS | B3 simulator: worst | B3 fit with r: RMS | X4a: RMS | X4a: worst |")
+    w("|---|---|---|---|---|---|---|")
+
+    def row(name, n, sim, b3r, new):
+        def worst(xs):
+            return pct(max(xs, key=abs)) if xs else "—"
+        w(f"| {name} | {n} | {rms(sim) * 100:.1f}% | {worst(sim)} | {rms(b3r) * 100:.1f}% | {rms(new) * 100:.1f}% | {worst(new)} |")
+
+    row("R2 decode, all", len(dpts), b3_rows_r2, b3_rows_r2, x4_rows_r2)
+    row("R2 decode, batch ≥ 16", len(big_i), [b3_rows_r2[i] for i in big_i], [b3_rows_r2[i] for i in big_i], [x4_rows_r2[i] for i in big_i])
+    row("R1 batch-1 TTFT", len(ppts), b3sim_r1, b3_r1, x4_r1)
+    if r6_rows:
+        w6 = [r for r in r6_rows if r["warm_ms"]]
+        sim6 = [b3_sim.ttft_ms(model, r["prefix"] + r["suffix"], chunk, cached=r["prefix"]) / r["warm_ms"] - 1 for r in w6]
+        b36 = [r["pred_warm_ms"] / r["warm_ms"] - 1 for r in w6]
+        new6 = [r["pred_warm_x4_ms"] / r["warm_ms"] - 1 for r in w6]
+        row("R6 warm-prefix TTFT", len(w6), sim6, b36, new6)
+    w("")
+
+    # B4-lite: the simulator's numbers against the measurements.
+    def val(label, meas, before, after):
+        w(f"| {label} | {fmt(meas, 2)} | {fmt(before, 2)} | {pct(before / meas - 1)} | {fmt(after, 2)} | {pct(after / meas - 1)} |")
+
+    w("## B4-lite validation")
+    w("")
+    w("The simulator's cost model (mirrored here from `src/engine/cost/`: B3 numbers without r, as the")
+    w("engine had them, then X4a) against the measured medians. Decode is one steady step at the run's mean")
+    w("context. TPOT rows compare with median ITL; the benchmark's median TPOT is shown too, and is higher")
+    w("at batch 128 because steps that admit new requests also carry their prefill chunks.")
+    w("")
+    w("| Quantity | Measured ms | B3 simulator ms | Residual | X4a ms | Residual |")
+    w("|---|---|---|---|---|---|")
+    for p in ppts:
+        if p["prompt"] in (128, 2048, 8192, 32768):
+            val(f"Batch-1 TTFT, {p['prompt']:,}-token prompt", p["ttft_ms"], b3_sim.ttft_ms(model, p["prompt"], chunk), x4.ttft_ms(model, p["prompt"], chunk))
+    byid = {p["id"]: p for p in dpts}
+    for pid, label in (("c001", "batch 1"), ("c032", "batch 32"), ("c128", "batch 128")):
+        p = byid.get(pid)
+        if p:
+            ctx = p["batch"] * p["ctx"]
+            val(f"TPOT (ITL p50), {label}", p["itl_ms"], b3_sim.decode_ms(model, p["batch"], ctx), x4.decode_ms(model, p["batch"], ctx))
+    for pid, label in (("c032", "batch 32"), ("c128", "batch 128")):
+        p = byid.get(pid)
+        if p and p.get("tpot_p50_ms"):
+            ctx = p["batch"] * p["ctx"]
+            val(f"TPOT (bench p50), {label}", p["tpot_p50_ms"], b3_sim.decode_ms(model, p["batch"], ctx), x4.decode_ms(model, p["batch"], ctx))
+    for r in r6_rows:
+        if r["prefix"] in (8192, 32768) and r["warm_ms"]:
+            total = r["prefix"] + r["suffix"]
+            val(f"Warm TTFT, {r['prefix']:,} cached + {r['suffix']}", r["warm_ms"], b3_sim.ttft_ms(model, total, chunk, cached=r["prefix"]), r["pred_warm_x4_ms"])
     w("")
 
     w("## Conditions")
@@ -476,14 +646,14 @@ def main() -> int:
     w(f"r² = {dfit['r2']:.4f}. η_b = **{eta_b:.4f}** ({eta_b * model.bw / 1e9:,.0f} GB/s achieved),")
     w(f"t_o = **{t_o:.3f} ms**.")
     w("")
-    w("Decode check across R2 with the fitted η_c, η_b and t_o. Context is the mean over the")
-    w("output (input + output/2). Residual = predicted ÷ measured − 1.")
+    w("Decode check across R2: B3's η_c, η_b and t_o, then X4a's joint fit with the per-sequence term")
+    w(f"(d = {x4.d * 1e3:.1f} µs, η_b = {x4.eta_b:.4f}, fitted on every point). Context is the mean over the")
+    w("output (input + output/2). Residual = predicted ÷ measured − 1. \"B3 fit\" marks the points B3 fitted.")
     w("")
-    w("| Point | Batch | Context | Measured ITL p50 ms | Predicted ms | Residual | Bound | In fit |")
-    w("|---|---|---|---|---|---|---|---|")
+    w("| Point | Batch | Context | Measured ITL p50 ms | B3 ms | B3 residual | X4a ms | X4a residual | X4a bound | B3 fit |")
+    w("|---|---|---|---|---|---|---|---|---|---|")
     for p in dpts:
-        bound = "compute" if p["compute_ms"] > p["memory_ms"] else "memory"
-        w(f"| {p['id']} | {p['batch']} | {p['ctx']:,.0f} | {p['itl_ms']:.2f} | {p['pred_ms']:.2f} | {pct(p['pred_ms'] / p['itl_ms'] - 1)} | {bound} | {'yes' if p['batch'] <= 8 else 'no'} |")
+        w(f"| {p['id']} | {p['batch']} | {p['ctx']:,.0f} | {p['itl_ms']:.2f} | {p['pred_ms']:.2f} | {pct(p['pred_ms'] / p['itl_ms'] - 1)} | {p['pred_x4_ms']:.2f} | {pct(p['pred_x4_ms'] / p['itl_ms'] - 1)} | {p['bound_x4']} | {'yes' if p['batch'] <= 8 else 'no'} |")
     w("")
     conc = [p for p in dpts if p["sweep"] == "conc"]
     big = [p for p in conc if p["batch"] >= 16]
@@ -492,11 +662,11 @@ def main() -> int:
         k_a, k_b, k_r2 = linfit([p["batch"] for p in big], [p["itl_ms"] for p in big])
         w("### Decode at large batch")
         w("")
-        w(f"The model is within ~1% wherever it was fitted, but it underpredicts decode at batch ≥ 32:")
+        w(f"B3's model was within ~1% wherever it was fitted, but it underpredicted decode at batch ≥ 32:")
         w(f"by {abs(worst_d['pred_ms'] / worst_d['itl_ms'] - 1) * 100:.0f}% at batch {worst_d['batch']}. Measured ITL grows almost linearly with batch")
         w(f"from 16 to 256: {k_a:.2f} ms + {k_b * 1e3:.0f} µs per sequence (r² {k_r2:.3f}). The roofline instead stays")
         cross = next((q["batch"] for q in conc if q["compute_ms"] > q["memory_ms"]), None)
-        w(f"flat on the weight read until compute crosses it{f' at batch {cross}' if cross else ''}. Two readings, both outside schema v1:")
+        w(f"flat on the weight read until compute crosses it{f' at batch {cross}' if cross else ''}. Two readings:")
         w("")
         w("- Small-M GEMMs run well below prefill efficiency. Implied decode η_c = FLOPs ÷ ((ITL − t_o) × peak),")
         w("  shown where decode could be compute-bound (batch ≥ 128):")
@@ -510,9 +680,12 @@ def main() -> int:
         w(f"- Or a per-sequence cost (sampling, scheduler and input prep, KV gather) of about {k_b * 1e3:.0f} µs per sequence per step,")
         w("  which the roofline has no term for.")
         w("")
-        w("Consequence: at high batch the simulator's replica is faster than the real one, so the simulated")
-        w("saturation knee (tab 2) lands at a higher rate than R3's. B4 should compare them. A per-sequence")
-        w("step term would be a schema change for the integrator.")
+        x4_cross = next((q["batch"] for q in conc if q["bound_x4"] == "compute"), None)
+        wd = max(big, key=lambda p: abs(p["pred_x4_ms"] / p["itl_ms"] - 1))
+        w(f"X4a takes the second, with one parameter: `decodePerSeqMs` = {x4.d * 1e3:.1f} µs. It is smaller than the")
+        w(f"raw {k_b * 1e3:.0f} µs slope because the roofline already charges the growing KV read and, from batch")
+        w(f"{x4_cross}, compute. The worst X4a residual at batch ≥ 16 is {pct(wd['pred_x4_ms'] / wd['itl_ms'] - 1)} at batch {wd['batch']}")
+        w(f"(B3: {pct(wd['pred_ms'] / wd['itl_ms'] - 1)}).")
         w("")
 
     w("## R1: η_c")
@@ -525,11 +698,14 @@ def main() -> int:
     w(f"Without r, short prompts come out too fast ({pct(single['pred_no_r'][0] / ppts[0]['ttft_ms'] - 1)} at {ppts[0]['prompt']:,} tokens). The simulator needs a")
     w(f"per-request constant of about {single['r']:.0f} ms to match short-prompt TTFT.")
     w("")
-    w("| Prompt | n | Measured TTFT p50 ms | Predicted ms | Residual | No r: residual | Split fit: residual | Attention share of FLOPs |")
-    w("|---|---|---|---|---|---|---|---|")
+    w(f"X4a: the joint fit moves η_c to {x4.eta_c:.4f} and r to {x4.r:.1f} ms, which the simulator now applies as")
+    w("`requestOverheadMs`; `batch1TtftMs` includes it.")
+    w("")
+    w("| Prompt | n | Measured TTFT p50 ms | Predicted ms | Residual | No r: residual | Split fit: residual | X4a: residual | Attention share of FLOPs |")
+    w("|---|---|---|---|---|---|---|---|---|")
     for i, p in enumerate(ppts):
         m = p["ttft_ms"]
-        w(f"| {p['prompt']:,} | {p['n']} | {fmt(m)} | {fmt(single['pred'][i])} | {pct(single['pred'][i] / m - 1)} | {pct(single['pred_no_r'][i] / m - 1)} | {pct(split['pred'][i] / m - 1)} | {attn_share(model, p['prompt'], chunk) * 100:.0f}% |")
+        w(f"| {p['prompt']:,} | {p['n']} | {fmt(m)} | {fmt(single['pred'][i])} | {pct(single['pred'][i] / m - 1)} | {pct(single['pred_no_r'][i] / m - 1)} | {pct(split['pred'][i] / m - 1)} | {pct(x4.ttft_ms(model, p['prompt'], chunk) / m - 1)} | {attn_share(model, p['prompt'], chunk) * 100:.0f}% |")
     w("")
 
     # Split check (03 open item 3).
@@ -562,22 +738,26 @@ def main() -> int:
         w("Warm: shared prefix plus a new suffix at batch 1; the median excludes request 0, which fills the")
         w("cache. Cold: the same total length, nothing shared. Predictions use the fitted model with r.")
         w("")
-        w("| Prefix | Suffix | Fill ms | Warm p50 ms | Cold p50 ms | Warm ÷ cold | Predicted warm | Predicted cold |")
-        w("|---|---|---|---|---|---|---|---|")
+        w("| Prefix | Suffix | Fill ms | Warm p50 ms | Cold p50 ms | Warm ÷ cold | B3 warm | B3 cold | X4a warm | X4a warm residual | X4a cold residual |")
+        w("|---|---|---|---|---|---|---|---|---|---|---|")
         for r in r6_rows:
             ratio = f"{r['warm_ms'] / r['cold_ms']:.2f}" if r["cold_ms"] else "—"
             cold_s = fmt(r["cold_ms"]) if r["cold_ms"] else "—"
-            w(f"| {r['prefix']:,} | {r['suffix']} | {fmt(r['fill_ms'])} | {fmt(r['warm_ms'])} | {cold_s} | {ratio} | {fmt(r['pred_warm_ms'])} | {fmt(r['pred_cold_ms'])} |")
+            cold_res = pct(r["pred_cold_x4_ms"] / r["cold_ms"] - 1) if r["cold_ms"] else "—"
+            w(f"| {r['prefix']:,} | {r['suffix']} | {fmt(r['fill_ms'])} | {fmt(r['warm_ms'])} | {cold_s} | {ratio} | {fmt(r['pred_warm_ms'])} | {fmt(r['pred_cold_ms'])} | {fmt(r['pred_warm_x4_ms'])} | {pct(r['pred_warm_x4_ms'] / r['warm_ms'] - 1)} | {cold_res} |")
         w("")
         if len(r6_rows) >= 2:
             ea, eb, er2 = linfit([r["prefix"] for r in r6_rows], [r["warm_ms"] - r["pred_warm_ms"] for r in r6_rows])
-            w(f"Cold TTFT matches the model (it is R1's fit). Warm TTFT does not: the excess over the model")
-            w(f"grows with the cached prefix at **{eb * 1e3:.1f} µs per cached token** (r² {er2:.3f}), which is")
-            w(f"{eb * r6_rows[-1]['prefix']:.0f} ms at a {r6_rows[-1]['prefix']:,}-token prefix. The step model charges a cache hit nothing")
+            w(f"Cold TTFT matches the model (it is R1's fit). Warm TTFT did not under B3: the excess over the model")
+            w(f"grows with the cached prefix at {eb * 1e3:.1f} µs per cached token (r² {er2:.3f}), which is")
+            w(f"{eb * r6_rows[-1]['prefix']:.0f} ms at a {r6_rows[-1]['prefix']:,}-token prefix. The step model charged a cache hit nothing")
             w("beyond the suffix's attention to it. Likely sources: the API server tokenizing the whole prompt, and")
             w("the scheduler hashing and looking up its blocks. The lesson (a cache hit is far cheaper) holds, since")
-            w("warm is 5–40% of cold, but simulated warm TTFT is optimistic at long prefixes. Candidate term for B4:")
-            w("a per-prompt-token cost outside the GPU step.")
+            w("warm is 5–40% of cold.")
+            w("")
+            w(f"X4a: `cachedTokenMs` = **{x4.c * 1e3:.2f} µs** per cached token, least squares through the origin of the warm")
+            w("excess over the X4a model, charged to the step that admits the request. A per-prompt-token cost is the")
+            w("other reading (the whole prompt is tokenized); charging only hits leaves cold TTFT, R1's fit, unchanged.")
             w("")
         if mix:
             w("Under load (8 concurrent, 4k prefix + 256 suffix, 64 out):")

@@ -37,9 +37,12 @@
     "maxModelLen": 131072
   },
   "costModel": {
-    "computeEfficiency": 0.5453,
-    "bandwidthEfficiency": 0.8394,
-    "stepOverheadMs": 0.71
+    "computeEfficiency": 0.5455,
+    "bandwidthEfficiency": 0.8482,
+    "stepOverheadMs": 0.71,
+    "decodePerSeqMs": 0.052,
+    "cachedTokenMs": 0.006205,
+    "requestOverheadMs": 18.9
   },
   "coldStartMs": {
     "processRestart": {
