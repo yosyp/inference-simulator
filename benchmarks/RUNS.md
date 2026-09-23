@@ -23,6 +23,11 @@ during the run window, sampled about every 20 s.
 | R7-20260923T221344Z-process-restart | R7, process restart only | 0 | complete | 4.6 min | One prime start, then 3 timed starts. Trials 1 and 2: weights loaded 17.7–17.9 s, `/health` 200 at 28.9–29.1 s, first token 0.08 s later. Trial 3 stalled 157 s in c10d init after `The hostname of the client socket cannot be retrieved. err=-3` (a transient name-resolution failure, not cold-start work). The median excludes it. Host reboot and replacement host are not run: they need `sudo` (below). |
 | R8-20260923T221822Z | R8 | 0, 1, both | complete | 16.9 min | GPU 0 alone, GPU 1 alone, then both. Output throughput with both loaded is within 0.2% of solo on every load, and TPOT p50 within 1.5%. TTFT p50 moves by up to 20%: the closed-loop first wave starts synchronized, so this is not interference. Replicas scale linearly (03 §4). |
 
+**Totals.** The campaign ran 19:29–22:36 UTC on 2026-09-23: 3.1 h wall-clock and about 3.2
+GPU-hours of vLLM time. Every run definition was used as written: no sweep point was trimmed,
+and R5 needed no rate override. Across 1,114 `pmon` samples, the idle ComfyUI process never
+went above 0% SM utilization on either GPU.
+
 ## Left for the author: R7 host reboot and replacement host
 
 These two conditions need `sudo` to drop the page cache, so B2 didn't run them.
