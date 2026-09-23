@@ -11,8 +11,6 @@ import { buildRegistry } from './registry.ts';
 import { openRun } from './run.ts';
 import type { CoreState, DayRunner, DayState, EngineModule, RunnerOptions } from './types.ts';
 
-declare function structuredClone<T>(value: T): T;
-
 function validateInput(input: DayRunInput): void {
   if (!isDayIndex(input.day)) throw new RangeError(`Day ${input.day} is not a work-week day`);
   const { bucketMs, histBucketMs } = input.config;

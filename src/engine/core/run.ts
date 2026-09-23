@@ -31,10 +31,6 @@ import {
 import { isTopic, type Registry } from './registry.ts';
 import type { CoreDayRun, Ctx, DayState, NoticeView, RunnerOptions } from './types.ts';
 
-// The engine's lib is ES2023 without DOM or WebWorker types; structuredClone exists in every
-// runtime we target (browsers, workers, Node 17+).
-declare function structuredClone<T>(value: T): T;
-
 type MutableCtx = { -readonly [K in keyof Ctx]: Ctx[K] };
 
 /** Wraps `state` in a live run. With `init`, builds each module's slice first (a fresh day). */

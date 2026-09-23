@@ -227,6 +227,7 @@ Storage (K7): per-request data is columnar (typed arrays), never one object per 
 | K9 | Form of the admission limit (open item 2) | Queue at the router; per-replica in-flight cap; fleet outstanding cap | Fleet outstanding cap = per-replica limit × Ready replicas, tracked exactly by the router |
 | K21 | Tabs open mid-week; a continuous week needs ~8M events before tab 5's first frame | Independent days; continuous week with checkpoints shipped in the build; continuous week behind a loading screen | Independent days from a standard morning state (§8); the lesson day is computed first |
 | K23 | Think-time distribution family (§8) | Gamma; log-logistic; exponential | Log-logistic (median, shape): closed-form inverse, median as a parameter, a realistic heavy tail |
+| K27 | Same-instant ordering and patch timing (decided in E2) | — | At one instant: patches first, then infrastructure (failure and recovery), then the engine, then client timeouts, then the router, then arrivals. The engine going before client timeouts means a first token landing exactly at the timeout counts (K8). 'set' patches dated before a day apply before any module initialises; patches inside the day, including one at exactly midnight, apply first at their instant. Modules share three notification topics: firstToken, requestEnded, replicaState. |
 
 ## 14. Open items
 
