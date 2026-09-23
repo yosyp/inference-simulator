@@ -16,11 +16,24 @@ The look is a quiet operations console: light gray chrome, ink text, one focus b
 
 `theme.test.ts` fails if the CSS and the TS mirror drift. To change a token, edit `src/index.css`, then the TS mirror, then rerun `palette.test.ts`.
 
+## Themes
+
+There are two palettes, `palettes.light` and `palettes.dark` in `colors.ts`. The light one is the `@theme` block in `src/index.css`; the dark one overrides tokens under `:root[data-theme='dark']`, and every token not listed there is an alias (`var(--color-ink)` and so on) that follows the overrides. `theme.test.ts` checks both against the mirror, and `palette.test.ts` runs every check below on both.
+
+`theme-state.ts` owns the active theme. `initTheme()` (called by `App.tsx`) starts from `prefers-color-scheme` and follows it until the visitor picks a theme with the header toggle or `d`. The pick lives in memory only, since the app uses no browser storage. `setTheme` sets `data-theme` on `<html>`, which switches every CSS variable, so Tailwind classes, `cssVar()`, and the charts follow with no re-render. It also overwrites `colors` and the encodings in place for canvas code, and notifies `subscribeTheme` listeners: `SimCanvas` repaints, and the SVG legend glyphs re-render through `useTheme()`. So read `colors` and the style objects at draw time; a value copied into a module-level constant stays in the theme it was copied in.
+
+Dark-theme choices worth knowing:
+
+- Data hues whose Okabe–Ito original falls under 3:1 on the dark canvas are lightened (decode and mean #2F7CCB, p99 and preempted #F07A2E, KV #1FB487, secondary #D98BB6); the worst-replica line is white instead of black.
+- Down and Crashed replicas are light (#D0D7DF) with dark text and hatching, the inverse of the light theme, because they must still differ from both the canvas and Ready by 3:1. The Crashed border darkens to #CF4510 to keep 3:1 against that fill.
+- The incident glyph's edge is near-black, since it is drawn on the yellow band.
+- `scrim` is the modal backdrop, at 40% alpha: ink in light, black in dark.
+
 How to use a color:
 
 - **React:** Tailwind classes, e.g. `bg-surface`, `text-ink-muted`, `border-border-strong`, `stroke-series-p99`, `fill-dot-decode`.
 - **SVG attributes and style props:** `cssVar('series-p99')` gives `var(--color-series-p99)`. `static` emits every variable, so this works even when no class uses the token.
-- **Canvas:** the hex values in `colors`, or the style objects in `encodings.ts`. `withAlpha(hex, a)` makes an `rgba()` string.
+- **Canvas:** the hex values in `colors`, or the style objects in `encodings.ts`, read at draw time (see Themes). `withAlpha(hex, a)` makes an `rgba()` string.
 
 Use the tokens, not Tailwind's default palette (`slate-*`, `blue-*`). The defaults stay available so nothing breaks, but they aren't checked.
 
@@ -92,7 +105,7 @@ Annotations (fork, incident, playhead) are neutral ink plus a glyph, not a hue. 
 
 ## Checks
 
-`palette.test.ts` asserts every threshold below, using the functions in `color-math.ts` that produced these figures.
+The figures below are for the light theme; the dark theme passes the same thresholds. `palette.test.ts` asserts every threshold below, using the functions in `color-math.ts` that produced these figures.
 
 ### Contrast (WCAG 2.x)
 

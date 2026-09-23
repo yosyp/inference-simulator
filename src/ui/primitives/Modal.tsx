@@ -46,7 +46,7 @@ export function Modal({ open, ...panel }: ModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={chromeTransition(reduced, 'fast')}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/40 p-4"
           // Keep focus in the dialog when the backdrop is pressed.
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) e.preventDefault();

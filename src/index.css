@@ -43,6 +43,8 @@
   --color-warn-ink: #5c4400;
   --color-warn-border: #c9a227;
   --color-mode-high-side: #5b4a91;
+  /* Modal backdrop, drawn at 40% alpha. */
+  --color-scrim: #151b26;
 
   /* Canvas: request dots (05 §7). Shape and size cues live in src/ui/theme/encodings.ts. */
   --color-dot-queued: #475569;
@@ -103,6 +105,62 @@
   --layout-canvas-h: 272px;
   --layout-chart-h: 132px;
   --layout-timeline-h: 72px;
+}
+
+/*
+ * Dark theme: data-theme="dark" on <html> (src/ui/theme/theme-state.ts; it defaults to
+ * prefers-color-scheme). Tokens not listed here are aliases (var(--color-ink) and so on) that
+ * follow these, or hues that work on both grounds. Mirrored as palettes.dark in colors.ts.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #0e1319;
+  --color-surface: #161c24;
+  --color-surface-muted: #212933;
+  --color-border: #343e4b;
+  --color-border-strong: #7f8b9a;
+  --color-ink: #e6ebf1;
+  --color-ink-muted: #b6c0cc;
+  --color-ink-subtle: #99a4b2;
+  --color-focus: #6fa8ff;
+  --color-warn-bg: #3a3016;
+  --color-warn-ink: #f4de9c;
+  --color-warn-border: #a88a2a;
+  --color-mode-high-side: #a898e0;
+  --color-scrim: #000000;
+  --color-dot-queued: #a7b1be;
+  --color-dot-prefill-stroke: #a6d7f3;
+  --color-dot-decode: #2f7ccb;
+  --color-dot-decode-stroke: #7db5ec;
+  --color-dot-preempted: #f07a2e;
+  --color-replica-loading-fill: #2e2615;
+  --color-replica-down: #d0d7df;
+  --color-replica-down-hatch: #9aa5b3;
+  --color-replica-down-ink: #0e1319;
+  --color-replica-crashed-stroke: #cf4510;
+  --color-kv: #1fb487;
+  --color-kv-track: #27303b;
+  --color-flow: #5d6978;
+  --color-series-mean: #2f7ccb;
+  --color-series-p99: #f07a2e;
+  --color-series-secondary: #d98bb6;
+  --color-series-worst: #ffffff;
+  --color-series-muted: #56616f;
+  --color-series-kv: #1fb487;
+  --color-series-preemption: #f07a2e;
+  --color-series-incident-stroke: #0e1319;
+  --color-chart-grid: #29313c;
+  --color-high-side-bar: #86a5c4;
+  --color-high-side-empty: #1b222b;
+  --color-high-side-empty-hatch: #2f3945;
+}
+
+/* Before the script sets data-theme, match the system so a dark page doesn't flash white. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    background-color: #0e1319;
+  }
 }
 
 @layer base {

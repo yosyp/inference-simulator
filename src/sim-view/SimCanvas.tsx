@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, type MouseEvent } from 'react';
 import { sceneAtPlayhead, subscribeFrame } from '../playback/frame.ts';
 import type { PlaybackStore, SceneState } from '../playback/types.ts';
 import { cx } from '../ui/primitives/util.ts';
+import { subscribeTheme } from '../ui/theme/theme-state.ts';
 import { describeScene } from './describe.ts';
 import { createDrawScratch, drawScene } from './draw-scene.ts';
 import { analystAt, createHitBuffer, hitTest, type HitBuffer } from './hit-test.ts';
@@ -78,6 +79,9 @@ export function SimCanvas({ store, label = SIM_CANVAS_LABEL, className }: SimCan
       }
     });
 
+    // Colors are read at draw time, so a theme switch needs only a repaint.
+    const unsubscribeTheme = subscribeTheme(paint);
+
     const rect = wrap.getBoundingClientRect();
     resize(rect.width, rect.height);
     let observer: ResizeObserver | null = null;
@@ -97,6 +101,7 @@ export function SimCanvas({ store, label = SIM_CANVAS_LABEL, className }: SimCan
 
     return () => {
       unsubscribe();
+      unsubscribeTheme();
       observer?.disconnect();
       window.removeEventListener('resize', onWindowResize);
       hitsRef.current = null;

@@ -1,5 +1,5 @@
-export { colors, cssVar, okabeIto, withAlpha } from './colors.ts';
-export type { ColorToken } from './colors.ts';
+export { colors, cssVar, okabeIto, palettes, withAlpha } from './colors.ts';
+export type { ColorToken, Palette, ThemeName } from './colors.ts';
 export {
   contrastRatio,
   deltaE,
@@ -11,6 +11,7 @@ export {
 export type { Rgb, Vision } from './color-math.ts';
 export {
   dotStyles,
+  encodingsFor,
   kvTankStyle,
   markerStyles,
   replicaStyle,
@@ -22,6 +23,7 @@ export {
 export type {
   DotShape,
   DotStyle,
+  Encodings,
   ReplicaStyle,
   ReplicaStyleKey,
   SeriesRole,
@@ -36,3 +38,11 @@ export {
 } from './motion.ts';
 export type { MotionSpeed } from './motion.ts';
 export { canvasFonts, fontSizes, fontStacks } from './typography.ts';
+export {
+  getTheme,
+  initTheme,
+  setTheme,
+  subscribeTheme,
+  toggleTheme,
+  useTheme,
+} from './theme-state.ts';

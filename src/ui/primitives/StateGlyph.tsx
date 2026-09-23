@@ -5,6 +5,7 @@ import { useId } from 'react';
 import type { DotState } from '../../playback/types.ts';
 import type { ReplicaStyleKey } from '../theme/encodings.ts';
 import { dotStyles, kvTankStyle, replicaStyles } from '../theme/encodings.ts';
+import { useTheme } from '../theme/theme-state.ts';
 
 export interface DotGlyphProps {
   state: DotState;
@@ -15,6 +16,7 @@ export interface DotGlyphProps {
 }
 
 export function DotGlyph({ state, size = 12, title }: DotGlyphProps) {
+  useTheme(); // The encodings hold the active theme's colors; re-render when it changes.
   const s = dotStyles[state];
   const r = s.radiusPx;
   const common = {
@@ -58,6 +60,7 @@ export function ReplicaGlyph({
   progress = 0.6,
   title,
 }: ReplicaGlyphProps) {
+  useTheme();
   const s = replicaStyles[state];
   const patternId = useId();
   const inset = s.strokeWidthPx / 2;
