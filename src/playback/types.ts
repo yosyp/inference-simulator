@@ -112,6 +112,8 @@ export interface StatusSnapshot {
     amplification: number;
     ttftP99Ms: number;
     abandonedSessions: number;
+    /** Requests finished per second over the last minute (goodput). */
+    finishedPerS: number;
   };
 }
 

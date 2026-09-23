@@ -93,6 +93,7 @@ export function snapshot(
       amplification: 1,
       ttftP99Ms: 300,
       abandonedSessions: 0,
+      finishedPerS: 1,
     },
   };
 }

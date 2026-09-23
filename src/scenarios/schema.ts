@@ -68,6 +68,10 @@ export interface Scenario {
     tryThis: string[];
   };
   statusTemplates: StatusTemplate[];
+  /** Shown under the title in the sidebar: what the tab teaches, and the conclusion to take away. */
+  lesson?: { summary: string; takeaway: string };
+  /** Default chart window span in ms, centred on the lesson moment (U4); the whole shift day if unset. */
+  chartWindowMs?: number;
 }
 
 export function toWorkerScenario(s: Scenario): WorkerScenario {

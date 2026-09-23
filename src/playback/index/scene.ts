@@ -192,6 +192,7 @@ export function statusAt(state: StoreState, t: SimMs): StatusSnapshot {
       amplification,
       ttftP99Ms: ttftP99At(state.hist, t),
       abandonedSessions: around.sinceDayStart('abandonedSessions', FLEET_SERIES),
+      finishedPerS: around.perS('finished', FLEET_SERIES),
     },
   };
 }

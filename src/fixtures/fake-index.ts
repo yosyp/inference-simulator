@@ -197,6 +197,7 @@ export function createFakeIndex(opts: FixtureOptions): ResultsIndex {
         amplification: 1,
         ttftP99Ms: Math.max(...reps.map((_, r) => signals(opts, r, atMs).ttftMedianMs)) * 5,
         abandonedSessions: 0,
+        finishedPerS: offered,
       },
     };
   }
