@@ -34,7 +34,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      # Ordinary pushes and PRs run the fast tier; prod (the deploy gate) runs the full suite,
+      # including the whole-day simulation tests. Run `pnpm verify` locally before pushing.
+      - run: pnpm test:fast
+        if: github.ref != 'refs/heads/prod'
       - run: pnpm test
+        if: github.ref == 'refs/heads/prod'
       - run: pnpm build
 
       # Production-CSP smoke test (00-build §7.4, I4). `pnpm e2e` rebuilds dist/
