@@ -11,6 +11,7 @@
 // Ordering: the worker posts messages in order, and posts each chunk before the `progress`
 // message that covers it. `progress.computed` is the full list of computed ranges, not a delta.
 // The worker sends `ready` after both `init` and `reset`, and one `detail` reply per requestTag.
+// A `fork` also moves the worker's focus to the fork's day.
 //
 // Fork cut rule. A fork at atMs cuts at cutMs = floor(atMs / histBucketMs) × histBucketMs. On the
 // fork's day, the main thread discards buckets starting at or after cutMs, requests whose endMs is
@@ -19,7 +20,7 @@
 // replays silently to cutMs, and streams from cutMs under the new revision. The patch itself
 // applies at atMs; the charts mark the fork at atMs.
 
-import type { AnalystId, Patch, SessionSummary, SimConfig } from '../engine/api.ts';
+import type { AnalystId, Patch, SimConfig } from '../engine/api.ts';
 import type { Calibration } from '../engine/calibration.ts';
 import type { ResultChunk, RollupRow } from '../engine/results.ts';
 import type { DayIndex, SimMs } from '../engine/time.ts';
@@ -67,12 +68,8 @@ export type MainToWorker =
   | { type: 'track'; runId: number; analyst: AnalystId | null };
 
 export type WorkerToMain =
-  | {
-      type: 'ready';
-      runId: number;
-      trackedAnalyst: AnalystId | null;
-      sessionsByDay: SessionSummary[][];
-    }
+  /** Sent right after init and after reset, before any chunk. */
+  | { type: 'ready'; runId: number; trackedAnalyst: AnalystId | null }
   | { type: 'chunk'; runId: number; revision: number; chunk: ResultChunk }
   | { type: 'dayComplete'; runId: number; revision: number; day: DayIndex; rollup: RollupRow[] }
   | { type: 'progress'; runId: number; revision: number; computed: ComputedRange[] }

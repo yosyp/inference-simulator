@@ -13,11 +13,8 @@
 //   5. the other days' streams: later days first, then earlier ones;
 //   6. the other days' traces, in the same order.
 //
-// Ready. The tracked analyst is picked at init from the moment day's session plan alone. The
-// other days' plans (sessionsByDay; about 0.2 s each at Server B knee load, and 250k objects to
-// clone) are computed right after the chunk that covers the focus time, and 'ready' follows
-// then, so they don't delay the first frame (P1). The tab opens paused, so the tracked analyst
-// appears before anyone presses Play. Reset does the same.
+// Ready. The tracked analyst is picked at init from the moment day's session plan alone, and 'ready'
+// goes out at once, after init and after reset, before the first chunk.
 //
 // Forks follow the cut rule in protocol.ts: nothing before cutMs is sent again. Messages carry the
 // current runId and revision; everything posted after a fork was computed under it.
@@ -108,27 +105,13 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
 
   // --- Work ---------------------------------------------------------------------------------
 
-  /** Computes one missing session plan per unit; posts 'ready' once all are there. */
   function stepReady(a: Active): void {
-    const plans = a.setup.plans;
-    const missing = plans.findIndex((p) => p === null);
-    if (missing >= 0) {
-      plans[missing] = planOf(a.setup, missing as DayIndex);
-      return;
-    }
     postReady(a);
   }
 
   function postReady(a: Active): void {
     a.run.readyAfterMs = null;
-    h.post({
-      type: 'ready',
-      runId: a.run.runId,
-      trackedAnalyst: a.setup.initialTracked,
-      sessionsByDay: a.setup.plans as SessionSummary[][],
-    });
-    // About 20 MB at Server B knee load: not worth keeping for a reset.
-    a.setup.plans = a.setup.plans.map(() => null);
+    h.post({ type: 'ready', runId: a.run.runId, trackedAnalyst: a.setup.initialTracked });
   }
 
   /** The most urgent unit of work, or null when everything is done. */
@@ -189,7 +172,7 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
     const setup = h.setup!;
     const focus = clampWeek(focusMs);
     h.run = newRun(runId, setup, dayOf(focus), focus);
-    if (setup.plans.every((p) => p !== null)) postReady(h as Active);
+    postReady(h as Active);
     kick();
   }
 
@@ -212,7 +195,6 @@ export function createEngineHost(options: EngineHostOptions): EngineHost {
     if (rule.rule === 'spansMoment') {
       const day = dayOf(rule.momentMs);
       plan = planOf({ scenario, calibration }, day);
-      plans[day] = plan;
     }
     return {
       scenario,

@@ -1,7 +1,4 @@
-// The real engine worker. Only the app entry (X1) imports this file; tests use fake-transport.ts.
-//
-// The worker file belongs to E11. Until it exists, importing this module from the app graph makes
-// `vite build` fail ("could not resolve ../worker/engine.worker.ts"), so nothing imports it yet.
+// The real engine worker (E11). Only the app entry imports this file; tests use fake-transport.ts.
 // The call stays in the literal form Vite needs to bundle the worker as a separate file under the
 // production CSP (`worker-src 'self'`; never inline or blob:, 04-stack §3).
 

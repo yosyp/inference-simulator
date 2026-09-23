@@ -192,7 +192,6 @@ export function createFakeTransport(options: FakeTransportOptions = {}): FakeTra
       type: 'ready',
       runId,
       trackedAnalyst: run.tracked,
-      sessionsByDay: days.map(() => []),
     });
     kick();
   }

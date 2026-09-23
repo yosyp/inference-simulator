@@ -338,7 +338,7 @@ describe('reset and stale runs', () => {
     store.reset();
     const n = results.calls.length;
     const chunk = makeFixtureChunk({ replicas: 1 }, simMs(2, 9), simMs(2, 9, 15));
-    transport.emit({ type: 'ready', runId: 1, trackedAnalyst: 99, sessionsByDay: [] });
+    transport.emit({ type: 'ready', runId: 1, trackedAnalyst: 99 });
     transport.emit({ type: 'chunk', runId: 1, revision: 0, chunk });
     transport.emit({
       type: 'progress',
@@ -394,7 +394,7 @@ describe('detail, tracking, errors', () => {
     const n = results.callsOf('addTrace').length;
     const chunk = makeFixtureChunk({ replicas: 1 }, simMs(2, 9), simMs(2, 9, 15));
     transport.emit({ type: 'trace', runId: 1, revision: 0, analyst: 99, day: 2, chunk });
-    transport.emit({ type: 'ready', runId: 1, trackedAnalyst: 5, sessionsByDay: [] });
+    transport.emit({ type: 'ready', runId: 1, trackedAnalyst: 5 });
     queue.runAll(10);
     expect(results.callsOf('addTrace')).toHaveLength(n);
     expect(state().trackedAnalyst).toBe(12);

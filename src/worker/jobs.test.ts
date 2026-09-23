@@ -221,7 +221,6 @@ describe('engine host: focus and reset', { timeout: 60_000 }, () => {
     const ready = ofType(t.out.slice(before), 'ready')[0]!;
     expect(ready.runId).toBe(2);
     expect(ready.trackedAnalyst).toBe(firstReady.trackedAnalyst);
-    expect(ready.sessionsByDay).toEqual(firstReady.sessionsByDay);
     // Stale messages from run 1 do nothing.
     t.send({
       type: 'fork',

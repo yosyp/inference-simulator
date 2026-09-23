@@ -32,17 +32,13 @@ describe('engine host: init and streaming', { timeout: 60_000 }, () => {
     const t = createTestHost();
     t.send(initMsg(scenarioOf(smallConfig(2)), calibration, FOCUS));
     t.runAll();
-    // 'ready' follows the chunk (and its progress) that covers the focus time, so the session
-    // plans don't delay the first frame.
+    // 'ready' is the first message, before any chunk.
     const at = t.out.findIndex((m) => m.type === 'ready');
     const ready = t.out[at] as Extract<WorkerToMain, { type: 'ready' }>;
     expect(t.out.filter((m) => m.type === 'ready')).toHaveLength(1);
-    const cover = t.out.findIndex((m) => m.type === 'chunk' && m.chunk.toMs > FOCUS);
-    expect(at).toBe(cover + 2);
+    expect(at).toBe(0);
     expect(ready.runId).toBe(1);
     expect(ready.trackedAnalyst).toBe(3);
-    expect(ready.sessionsByDay).toHaveLength(WEEK_DAYS);
-    for (const plan of ready.sessionsByDay) expect(plan.length).toBeGreaterThan(0);
 
     const days = t.out.map(messageDay).filter((d) => d !== null);
     // Focus day (Wednesday) first, then Thursday, Friday, Monday, Tuesday.

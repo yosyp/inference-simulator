@@ -6,7 +6,9 @@ import { calibration as appCalibration } from './data/calibration.ts';
 import type { Calibration } from './engine/calibration.ts';
 import { ChartStack } from './charts/index.ts';
 import { fixtureScenarios } from './fixtures/scenarios.ts';
-import { createFixturePlaybackStore } from './playback/fixture-store.ts';
+import { createResultsStore } from './playback/index/index.ts';
+import { createPlaybackStore } from './playback/store.ts';
+import { createWorkerTransport } from './playback/worker-transport.ts';
 import type { PlaybackState, PlaybackStore } from './playback/types.ts';
 import { usePlaybackSelector } from './playback/use-playback-selector.ts';
 import type { Scenario } from './scenarios/schema.ts';
@@ -17,14 +19,18 @@ import { Sidebar } from './ui/sidebar/index.ts';
 import { RollupTable } from './ui/high-side/index.ts';
 import { WeekTimeline } from './ui/timeline/index.ts';
 
-// --- Wiring. X1: swap these two for the scenario registry and the worker-backed store. -----------
+// --- Wiring. The store runs the real engine in a Web Worker (E11). X1 swaps the scenarios for the
+// registry once C2 and C3 land. --------------------------------------------------------------------
 
 function createAppScenarios(): readonly Scenario[] {
   return fixtureScenarios();
 }
 
 function createAppStore(): PlaybackStore {
-  return createFixturePlaybackStore();
+  return createPlaybackStore({
+    transport: createWorkerTransport(),
+    createResults: createResultsStore,
+  });
 }
 
 // -------------------------------------------------------------------------------------------------

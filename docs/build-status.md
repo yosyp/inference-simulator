@@ -18,7 +18,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E8 Failure | merged | main | `failureModule` (between replica and metrics); `replicaPhase`, `phaseTiming` for canvas progress; K34. C3: crashed replicas become a traffic black hole under least-outstanding until mark-down. |
 | E9 Metrics | merged | main | `metricsModule`, `dayRollup(state)`, `inFlightTransitions(...)` for detail replays; slice ~23 KB, clone 47 µs; ~1.4–2 µs per request. Rollup utilization = busy within the shift ÷ shift length. Open: 'active window only' emission (skip night buckets) — needs a small contract (E11/E9 follow-up). |
 | E10 Oracle | merged | main | 200 seeds in `pnpm test` (~5.5 s), 5,000 in `test:oracle:long` (55 s): 0 mismatches. Compares per-request times, outcomes, states, meters, and final KV pool contents. Catches 14 of 17 deliberate rule changes (the other 3 can't change behaviour). meterSync regression committed. |
-| E11 Assembly and worker | running | | Must follow protocol.ts ordering and detail-chunk rules (U2, U8 handoffs) |
+| E11 Assembly and worker | merged | main | `engine`, `runHeadless`, `createEngineHost`; worker bundles as `engine.worker-*.js` (105 kB). `ready` now goes out at once; `sessionsByDay` dropped from the protocol (saved ~1.1 s and 250k objects per Server B tab entry). |
 | U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
 | U3 Canvas | merged | main | `<SimCanvas store={store} />` fills the canvas slot; ~0.5 ms main-thread per frame at 1,000 dots. Optional later: `TrackedRequestView.prevReplica`. |
@@ -39,10 +39,12 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | I3 Deploy workflow | merged | main | deploy.yml calls ci.yml (workflow_call); build job has no id-token; deploy never cancelled; ci concurrency split per workflow |
 | I4 CSP smoke test | merged | main | `scripts/serve-prod.ts` + `e2e/`; optional steps marked IF PRESENT for X1 to harden; negative checks (inline style, blob worker, fetch) all fail as expected |
 | I5 First deploy | todo | | Author runs |
-| X1 Vertical slice | partial | main | Done: SimCanvas, ChartStack, WeekTimeline, RollupTable mounted in App.tsx on the fixture store; verify and e2e pass. Left: swap to the worker store (E11) and scenario registry (C2); keep one of the two clocks (toolbar vs timeline); harden e2e IF PRESENT steps; measure §8 budgets in Chrome. |
+| X1 Vertical slice | partial | main | Done: all components mounted; the app runs the real engine in a Web Worker; verify and e2e (real worker, prod CSP) pass. Left: scenario registry (after C2); keep one of the two clocks; harden e2e IF PRESENT steps; U2 should send `focus` on in-day seeks and not thin the playhead day's checkpoints on lookahead (else a late-day fork can miss P2); measure P5 in Chrome. |
 | X2–X5 | todo | | |
 
 ## Measurements
+
+`pnpm perf` (E11, Node 22 on this host, Server B knee load: 8 × 400 analysts, 16 sessions/analyst/day, 5 turns, provisional calibration): P1 init → first chunk covering Wed 09:30 **2.32 s** (≤ 3 s, pass); P2 fork → first chunk **0.59 s** worst (≤ 1 s, pass); P3 **2,601×** at the 10:30 peak (shift 3,247×, day 7,685×; ≥ 1,000×, pass); P4 **226 MB** main + worker for a week (results store 70 MB, worker 156 MB; ≤ 400 MB with a 100–150 MB page baseline, pass). Checkpoint 3.6 MB, clone 6.7 ms, restore 14.2 ms. Headless Chromium, production build and CSP, fixture scenarios: first frame 0.29 s (tab 1), 1.23 s (tab 5); no console errors. P6: main bundle 171 kB gzip (≤ 300 kB, pass).
 
 S1 (spike engine, this host): Server B knee day 7–8 s wall; 2,200–3,900× at peak with a prefix cache; 05:00→10:00 in 3.0–3.7 s ticking. Checkpoint clone 2–6 ms. See `docs/spikes/s1-scale.md`.
 
