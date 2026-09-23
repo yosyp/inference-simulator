@@ -45,7 +45,7 @@ ESLint or the CSP smoke test enforces most of these; don't work around them.
 
 ## This machine
 
-- It is also the benchmark host: 2× A100 PCIe 40GB at 250 W, with Llama 3.1 8B Instruct in the local Hugging Face cache. Other work may be using the GPUs, so ask before starting vLLM or anything else that touches them.
+- It is also the benchmark host: 2× A100 PCIe 40GB at 250 W. The Llama 3.1 8B Instruct weights are gated; the author downloads them with their own token (see `benchmarks/README.md`). Other work may be using the GPUs, so ask before starting vLLM or anything else that touches them. The harness refuses to run without `--gpu-approved`.
 - The author runs anything that needs `sudo`, such as `drop_caches` for benchmark R7.
 
 ## Infra and secrets

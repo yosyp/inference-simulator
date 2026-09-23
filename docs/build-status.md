@@ -29,8 +29,8 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | C1 Runner | todo | | |
 | C2 Tabs 1–3 | todo | | |
 | C3 Tabs 4–6 | todo | | |
-| B1 Harness | running | | |
-| B2 Runs | todo | | Needs author GPU approval |
+| B1 Harness | merged | main | `uv run harness plan all` prints R0–R8; ~3.9 h wall, ~4.2 GPU-h (±50%). vLLM 0.20.1 in the optional `engine` group. |
+| B2 Runs | todo | | Blocked on the author: download the Llama weights, free both GPUs, approve GPU use. R0 smoke: `cd benchmarks && uv sync --group engine && uv run harness preflight && uv run harness run R0 --gpus 0 --gpu-approved` |
 | B3 Derivation | todo | | |
 | B4 Validation | todo | | |
 | I1 Bootstrap | merged | main | OIDC subject uses the immutable prefix (K22); bootstrap also takes `site_domain` to scope Route 53 and ACM |

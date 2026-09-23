@@ -141,7 +141,7 @@ benchmarks/
   scripts/                 # wrapper, derivation script
   raw/<run-id>/
     manifest.json          # versions, hardware, engine args, run type
-    bench.json             # vllm bench serve --save-detailed output
+    bench-<point>.json     # vllm bench serve --save-detailed output, one file per sweep point (K25)
     metrics.jsonl          # 1 s /metrics scrapes
     nvml.jsonl             # 1 s NVML samples
   derived/calibration.json # consumed by the app
@@ -182,10 +182,12 @@ benchmarks/
 | ID | Question | Options considered | Decision |
 |---|---|---|---|
 | K10 | Who runs the benchmarks, and what does the app use meanwhile? | Agents run with author approval; agents write and author runs; defer and ship provisional numbers | Agents run on the benchmark host after the author approves GPU use; the author runs privileged steps; the app uses a provisional calibration file (`"status": "provisional"`) until measured values land |
+| K24 | Dataset for R2's concurrency sweep | vLLM `random`; fully random `unique` prompts | `unique` for R2's concurrency sweep. vLLM's `random` prompts are consecutive token-id runs from a random start, so with hundreds of prompts per point about one pair per point collides and hits the prefix cache. R1 and the rest of R2 stay on `random`. |
+| K25 | Raw bench output layout | One `bench.json` per run; one file per sweep point | One `bench-<point>.json` per point; the manifest maps each file to its parameters and time window |
 
 ## 10. Open items
 
-1. Exact sweep points for R1–R3, and the hold duration per rate step.
+1. Exact sweep points for R1–R3, and the hold duration per rate step. Proposed in `benchmarks/runs/*.toml` (B1); the author reviews them before B2.
 2. Whether to model weight transfer to a replacement host as a network-speed parameter (currently excluded).
 3. Fit quality of a single η_c. Attention is about two-thirds of prefill FLOPs at 120k tokens and about a third at 32k, and FlashAttention efficiency differs from GEMM efficiency. The derivation reports residuals across R1's range. If they exceed about 15% at either end, split η_c into GEMM and attention efficiencies (calibration schema v2).
 4. Manifests are published. Scrub hostnames, usernames, and tokens before committing raw data.
