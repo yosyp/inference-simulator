@@ -1,1 +1,147 @@
 @import 'tailwindcss';
+
+/*
+ * Design tokens (U1). This block is the source of truth. src/ui/theme/*.ts mirrors it for canvas
+ * and SVG code, and src/ui/theme/theme.test.ts fails if they drift. Rationale, contrast ratios, and
+ * the colorblind checks: src/ui/theme/README.md.
+ *
+ * `static` emits every variable even when no class uses it, so var(--color-*) works from SVG
+ * attributes and style props (cssVar() in src/ui/theme/colors.ts).
+ */
+@theme static {
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', 'Liberation Sans',
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* Chart ticks and dense labels. Tailwind's xs–xl are unchanged. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  /* Okabe–Ito base hues. */
+  --color-oi-black: #000000;
+  --color-oi-orange: #e69f00;
+  --color-oi-sky: #56b4e9;
+  --color-oi-green: #009e73;
+  --color-oi-yellow: #f0e442;
+  --color-oi-blue: #0072b2;
+  --color-oi-vermillion: #d55e00;
+  --color-oi-purple: #cc79a7;
+
+  /* UI chrome. */
+  --color-bg: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-muted: #edf0f3;
+  --color-border: #d3d9e0;
+  --color-border-strong: #7a8594;
+  --color-ink: #151b26;
+  --color-ink-muted: #465162;
+  --color-ink-subtle: #5f6b7a;
+  --color-focus: #1c5fd4;
+  --color-warn-bg: #fdf3cd;
+  --color-warn-ink: #5c4400;
+  --color-warn-border: #c9a227;
+  --color-mode-high-side: #5b4a91;
+
+  /* Canvas: request dots (05 §7). Shape and size cues live in src/ui/theme/encodings.ts. */
+  --color-dot-queued: #475569;
+  --color-dot-queued-fill: var(--color-surface);
+  --color-dot-prefill: var(--color-oi-sky);
+  --color-dot-prefill-stroke: #2a6f97;
+  --color-dot-decode: var(--color-oi-blue);
+  --color-dot-decode-stroke: #005a8c;
+  --color-dot-preempted: var(--color-oi-vermillion);
+  --color-dot-tracked: var(--color-ink);
+
+  /* Canvas: replicas, KV tanks, router, aggregate flow. */
+  --color-replica-ready: var(--color-surface);
+  --color-replica-ready-stroke: var(--color-border-strong);
+  --color-replica-loading: var(--color-oi-orange);
+  --color-replica-loading-fill: #fff7e5;
+  --color-replica-loading-stroke: var(--color-ink-muted);
+  --color-replica-down: #2b3440;
+  --color-replica-down-hatch: #56606e;
+  --color-replica-down-stroke: var(--color-ink);
+  --color-replica-down-ink: var(--color-surface);
+  --color-replica-crashed-stroke: var(--color-oi-vermillion);
+  --color-kv: var(--color-oi-green);
+  --color-kv-track: #f0f2f5;
+  --color-kv-stroke: var(--color-border-strong);
+  --color-canvas-bg: var(--color-surface);
+  --color-router: var(--color-surface-muted);
+  --color-flow: #9aa5b4;
+
+  /* Charts (05 §6) and timeline markers. */
+  --color-series-mean: var(--color-oi-blue);
+  --color-series-p99: var(--color-oi-vermillion);
+  --color-series-secondary: var(--color-oi-purple);
+  --color-series-worst: var(--color-oi-black);
+  --color-series-muted: #a3adba;
+  --color-series-kv: var(--color-oi-green);
+  --color-series-preemption: var(--color-oi-vermillion);
+  --color-series-fork: var(--color-ink-muted);
+  --color-series-incident: var(--color-oi-yellow);
+  --color-series-incident-stroke: var(--color-ink);
+  --color-series-playhead: var(--color-ink);
+  --color-chart-grid: #e6eaef;
+  --color-chart-axis: var(--color-ink-subtle);
+
+  /* High side (05 §9). */
+  --color-high-side-bar: #4f6d8a;
+  --color-high-side-bar-pending: var(--color-border-strong);
+  --color-high-side-empty: #f1f3f6;
+  --color-high-side-empty-hatch: #dde2e8;
+  --color-high-side-empty-ink: var(--color-ink-muted);
+  --color-high-side-outline: var(--color-border-strong);
+}
+
+/* Layout (05 §1, K15). Mirrored in src/ui/theme/layout.ts. */
+:root {
+  --layout-tabs-h: 44px;
+  --layout-toolbar-h: 48px;
+  --layout-canvas-h: 272px;
+  --layout-chart-h: 132px;
+  --layout-timeline-h: 72px;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+/* "Not collected on the high side" panels and other empty states. */
+@utility bg-hatch {
+  background-color: var(--color-high-side-empty);
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--color-high-side-empty-hatch) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+/* K18: no chrome animation under reduced motion. Motion components also zero their durations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
