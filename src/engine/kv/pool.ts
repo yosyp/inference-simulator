@@ -1,5 +1,6 @@
 // KV block pool state (02 §7 rules 3 and 5; mirrors vLLM V1's BlockPool with automatic prefix
-// caching). Plain data only (typed arrays, a Map, numbers) so structuredClone checkpoints work.
+// caching). Plain data only (typed arrays, one small Map, numbers) so structuredClone checkpoints
+// work, and cheap: nearly all of it is typed arrays, which clone as bytes.
 //
 // Every block is in exactly one of three states:
 // - free: refCount 0 and no content key. Kept on a stack; allocation takes these first.
@@ -9,11 +10,21 @@
 //
 // The LRU is an intrusive doubly linked list in two Int32Arrays of length totalBlocks + 1, where
 // index totalBlocks is a sentinel: lruNext[sentinel] is the least recently used block (evicted
-// next) and lruPrev[sentinel] the most recent. Blocks off the list have next = prev = -1.
+// next) and lruPrev[sentinel] the most recent. A block off the list keeps whatever links it had
+// (-1 in a new pool); they mean nothing.
 
 import type { Calibration } from '../calibration.ts';
-import { cachedBlock, indexInsert } from './content.ts';
-import { KEY_BLOCK_SPAN, NO_KEY, systemBlockKey } from './keys.ts';
+import {
+  type IndexArray,
+  cachedBlock,
+  checkIndex,
+  clearIndex,
+  emptyPages,
+  indexArray,
+  indexAdd,
+  indexHolder,
+} from './content.ts';
+import { NO_KEY, systemBlockKey } from './keys.ts';
 
 export type KvPoolConfig = Pick<Calibration['engine'], 'kvPoolTokens' | 'blockSize'>;
 
@@ -25,10 +36,23 @@ export interface KvPool {
   /** Per block: its content key (keys.ts), or NO_KEY. Exact for keys below 2^53. */
   readonly contentKey: Float64Array;
   /**
-   * Content key → block, in two levels (content.ts): owner → [live count, block per index…].
-   * Holds exactly the blocks with a key. Read it through cachedBlock.
+   * Content key → block, in two levels (content.ts): owner → its first index page in `pages`.
+   * Together with the fields from `pages` to `hintBase` it holds exactly the blocks with a key.
+   * Read it through cachedBlock.
    */
-  readonly contentIndex: Map<number, number[]>;
+  readonly contentIndex: Map<number, number>;
+  /** Index pages (content.ts), PAGE_STRIDE entries each. Replaced by a longer array as it grows. */
+  pages: IndexArray;
+  /** Pages handed out so far: pages[0 .. pagesUsed × PAGE_STRIDE) are in use or free. */
+  pagesUsed: number;
+  /** Free page + 1 at the top of the free-page list, or 0. */
+  pageFree: number;
+  /** Per block with a content key: the index page holding its entry. */
+  readonly keyPage: IndexArray;
+  /** Page of the latest index write, where the next registration looks first, or -1. */
+  hintPage: number;
+  /** That page's base key (its first block index's key), or -1. */
+  hintBase: number;
   readonly lruNext: Int32Array;
   readonly lruPrev: Int32Array;
   /** freeStack[0 .. freeCount) are the free blocks; the top is taken first. */
@@ -39,12 +63,17 @@ export interface KvPool {
   /**
    * Content keys evicted by the latest allocating call (allocateBlocks or acquireBlocks), in
    * eviction order: evictedKeys[0 .. evictedCount). Scratch, overwritten by the next such call.
+   * It starts short and is replaced by a longer array when a call evicts more than it holds, so
+   * read it from the pool after each call rather than keeping a reference.
    */
-  readonly evictedKeys: Float64Array;
+  evictedKeys: Float64Array;
   evictedCount: number;
   /** Evictions since the pool was created or reset. */
   evictionsTotal: number;
 }
+
+/** Initial evictedKeys length: enough for a decode step's or a small prefill's evictions. */
+const EVICTED_KEYS_START = 64;
 
 function blockCount(config: KvPoolConfig): number {
   const { kvPoolTokens, blockSize } = config;
@@ -67,13 +96,19 @@ export function createKvPool(config: KvPoolConfig): KvPool {
     refCount: new Int32Array(totalBlocks),
     contentKey: new Float64Array(totalBlocks),
     contentIndex: new Map(),
+    pages: emptyPages(totalBlocks),
+    pagesUsed: 0,
+    pageFree: 0,
+    keyPage: indexArray(totalBlocks, totalBlocks),
+    hintPage: -1,
+    hintBase: -1,
     lruNext: new Int32Array(totalBlocks + 1),
     lruPrev: new Int32Array(totalBlocks + 1),
     freeStack: new Int32Array(totalBlocks),
     freeCount: 0,
     referencedCount: 0,
     evictableCount: 0,
-    evictedKeys: new Float64Array(totalBlocks),
+    evictedKeys: new Float64Array(Math.min(totalBlocks, EVICTED_KEYS_START)),
     evictedCount: 0,
     evictionsTotal: 0,
   };
@@ -89,7 +124,7 @@ export function resetKvPool(pool: KvPool): void {
   const n = pool.totalBlocks;
   pool.refCount.fill(0);
   pool.contentKey.fill(NO_KEY);
-  pool.contentIndex.clear();
+  clearIndex(pool);
   pool.lruNext.fill(-1);
   pool.lruPrev.fill(-1);
   pool.lruNext[n] = n;
@@ -121,11 +156,10 @@ export function createMorningKvPool(config: KvPoolConfig, systemPromptTokens: nu
     const block = pool.freeStack[--pool.freeCount]!;
     const key = systemBlockKey(i);
     pool.contentKey[block] = key;
-    indexInsert(pool, key, block);
+    indexAdd(pool, key, block, -1);
   }
   for (let i = systemBlocks - 1; i >= 0; i--) {
     lruPushTail(pool, cachedBlock(pool, systemBlockKey(i)));
-    pool.evictableCount++;
   }
   return pool;
 }
@@ -163,6 +197,7 @@ export function kvUsedFrac(pool: KvPool): number {
 
 // ----- LRU list internals (used by ops.ts; not part of the public API) -----
 
+/** Append a block at the most recently used end: it becomes evictable. */
 export function lruPushTail(pool: KvPool, block: number): void {
   const { lruNext, lruPrev } = pool;
   const sentinel = pool.totalBlocks;
@@ -171,16 +206,17 @@ export function lruPushTail(pool: KvPool, block: number): void {
   lruPrev[block] = tail;
   lruNext[block] = sentinel;
   lruPrev[sentinel] = block;
+  pool.evictableCount++;
 }
 
+/** Take an evictable block off the LRU (referenced again, or its key dropped). */
 export function lruRemove(pool: KvPool, block: number): void {
   const { lruNext, lruPrev } = pool;
   const prev = lruPrev[block]!;
   const next = lruNext[block]!;
   lruNext[prev] = next;
   lruPrev[next] = prev;
-  lruNext[block] = -1;
-  lruPrev[block] = -1;
+  pool.evictableCount--;
 }
 
 /** Evictable blocks from least to most recently used (allocates; for tests and debugging). */
@@ -211,7 +247,10 @@ export function assertKvInvariants(pool: KvPool, heldCounts?: ArrayLike<number>)
     pool.freeCount + pool.referencedCount + pool.evictableCount === n,
     `free ${pool.freeCount} + referenced ${pool.referencedCount} + evictable ${pool.evictableCount} ≠ total ${n}`,
   );
-  check(pool.evictedCount >= 0 && pool.evictedCount <= n, `evictedCount ${pool.evictedCount}`);
+  check(
+    pool.evictedCount >= 0 && pool.evictedCount <= pool.evictedKeys.length,
+    `evictedCount ${pool.evictedCount}`,
+  );
 
   // 1 = on the free stack, 2 = on the LRU list.
   const seen = new Uint8Array(n);
@@ -247,29 +286,20 @@ export function assertKvInvariants(pool: KvPool, heldCounts?: ArrayLike<number>)
     if (key !== NO_KEY) {
       keyed++;
       check(Number.isSafeInteger(key) && key >= 0, `block ${b} key ${key}`);
-      const indexed = cachedBlock(pool, key);
+      const page = pool.keyPage[b]!;
+      const indexed = page < pool.pagesUsed ? indexHolder(pool, page, key) : -1;
       check(indexed === b, `key ${key} of block ${b} is indexed to ${indexed}`);
     }
     const expected = rc > 0 ? 0 : key === NO_KEY ? 1 : 2;
     check(seen[b] === expected, `block ${b} (refCount ${rc}, key ${key}) is on list ${seen[b]}`);
-    if (seen[b] !== 2) check(lruNext[b] === -1 && lruPrev[b] === -1, `block ${b} has LRU links`);
   }
   check(referenced === pool.referencedCount, `referenced ${referenced} ≠ ${pool.referencedCount}`);
 
   // The index holds exactly the keyed blocks: each entry points back at a block with that key.
-  let indexed = 0;
-  for (const [owner, blocks] of pool.contentIndex) {
-    let live = 0;
-    for (let slot = 1; slot < blocks.length; slot++) {
-      const b = blocks[slot]!;
-      if (b === -1) continue;
-      live++;
-      const key = owner * KEY_BLOCK_SPAN + slot - 1;
-      check(b >= 0 && b < n && contentKey[b] === key, `index has ${key} → ${b}`);
-    }
-    check(live > 0 && blocks[0] === live, `owner ${owner} counts ${blocks[0]}, holds ${live}`);
-    check(blocks[blocks.length - 1] !== -1, `owner ${owner} has trailing gaps`);
-    indexed += live;
-  }
+  const indexed = checkIndex(pool, check);
   check(keyed === indexed, `${keyed} keyed blocks but ${indexed} index entries`);
+  check(
+    pool.evictedKeys.length >= Math.min(n, EVICTED_KEYS_START),
+    `evictedKeys has room for ${pool.evictedKeys.length}`,
+  );
 }

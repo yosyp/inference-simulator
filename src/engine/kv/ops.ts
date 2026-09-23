@@ -4,31 +4,73 @@
 //
 // Block lists are passed as (array, start, count) so callers can keep block tables in any layout.
 // Nothing here allocates per call, except the content index growing when a key is registered.
+//
+// Once the pool is warm, every block allocated evicts one: about 50M allocate, evict, register and
+// release cycles per busy simulated day. Those paths are kept small so V8 can inline them into the
+// caller: one-block calls take a short path, error messages are built in separate functions, and
+// multi-block calls update pool counters and LRU links once per call rather than once per block.
 
 import type { SessionId } from '../api.ts';
-import { cachedBlock, indexInsert, indexRemove, indexReplace, ownerBlocks } from './content.ts';
+import { indexAdd, indexRemove, indexReplace, walkCached } from './content.ts';
 import { KEY_BLOCK_SPAN, NO_KEY, sessionBlockKey } from './keys.ts';
-import { type KvPool, lruPushTail, lruRemove } from './pool.ts';
+import { type KvPool, lruRemove } from './pool.ts';
 
 /** Where operations write block ids. A number[] grows as needed; an Int32Array must be big enough. */
 export type BlockOut = Int32Array | number[];
 
+// ----- Argument checks -----
+
 function checkCount(n: number, what: string): void {
-  if (!(n >= 0 && Number.isInteger(n))) throw new RangeError(`${what} ${n} is not a count`);
+  if (!(n >= 0 && Number.isInteger(n))) throw countError(n, what);
 }
 
 function checkOut(out: BlockOut, offset: number, count: number): void {
-  if (!(offset >= 0 && Number.isInteger(offset))) throw new RangeError(`Offset ${offset}`);
-  if (ArrayBuffer.isView(out) && offset + count > out.length) {
-    throw new RangeError(`Block table of length ${out.length} can't take ${count} at ${offset}`);
+  if (
+    !(offset >= 0 && Number.isInteger(offset)) ||
+    (ArrayBuffer.isView(out) && offset + count > out.length)
+  ) {
+    throw outError(out, offset, count);
   }
 }
 
 function checkBlock(pool: KvPool, block: number): void {
   if (!(block >= 0 && block < pool.totalBlocks && Number.isInteger(block))) {
-    throw new RangeError(`KV block ${block} is outside the pool of ${pool.totalBlocks}`);
+    throw blockError(pool, block);
   }
 }
+
+// Errors are built out of line so the functions above stay small.
+
+function countError(n: number, what: string): RangeError {
+  return new RangeError(`${what} ${n} is not a count`);
+}
+
+function outError(out: BlockOut, offset: number, count: number): RangeError {
+  if (!(offset >= 0 && Number.isInteger(offset))) return new RangeError(`Offset ${offset}`);
+  return new RangeError(`Block table of length ${out.length} can't take ${count} at ${offset}`);
+}
+
+function blockError(pool: KvPool, block: number): RangeError {
+  return new RangeError(`KV block ${block} is outside the pool of ${pool.totalBlocks}`);
+}
+
+function releaseError(pool: KvPool, block: number, rc: number): Error {
+  if (!(block >= 0 && block < pool.totalBlocks && Number.isInteger(block))) {
+    return blockError(pool, block);
+  }
+  return new Error(`KV block ${block} released with refCount ${rc}`);
+}
+
+function registerError(block: number, current: number, key: number): Error {
+  if (current === NO_KEY) return new Error(`KV block ${block} registered while unheld`);
+  return new Error(`KV block ${block} has key ${current}; can't register ${key}`);
+}
+
+function keyError(key: number): RangeError {
+  return new RangeError(`Content key ${key}`);
+}
+
+// ----- Lookup -----
 
 /**
  * The longest cached prefix of session `session`'s sequence of `numTokens` tokens (prompt, plus any
@@ -56,29 +98,13 @@ export function longestCachedPrefix(
   if (maxHit > KEY_BLOCK_SPAN) throw new RangeError(`Sequence of ${numTokens} tokens is too long`);
   checkOut(out, outOffset, maxHit);
   const systemBlocks = systemPromptTokens > 0 ? Math.floor(systemPromptTokens / pool.blockSize) : 0;
-  const owner = sessionBlockKey(session, 0) / KEY_BLOCK_SPAN;
-  // System-prompt blocks (owner 0), then the session's own; slot = block index + 1.
-  let n = 0;
+  sessionBlockKey(session, 0); // checks the session id
+  const owner = session + 1;
+  // System-prompt blocks (owner 0), then the session's own.
   const sysEnd = systemBlocks < maxHit ? systemBlocks : maxHit;
-  if (sysEnd > 0) {
-    const blocks = ownerBlocks(pool, 0);
-    const end = blocks === undefined ? 0 : Math.min(sysEnd, blocks.length - 1);
-    for (; n < end; n++) {
-      const block = blocks![n + 1]!;
-      if (block < 0) break;
-      out[outOffset + n] = block;
-    }
-    if (n < sysEnd) return n;
-  }
-  const blocks = ownerBlocks(pool, owner);
-  if (blocks === undefined) return n;
-  const end = Math.min(maxHit, blocks.length - 1);
-  for (; n < end; n++) {
-    const block = blocks[n + 1]!;
-    if (block < 0) break;
-    out[outOffset + n] = block;
-  }
-  return n;
+  const n = walkCached(pool, 0, 0, sysEnd | 0, out, outOffset);
+  if (n < sysEnd) return n;
+  return walkCached(pool, owner, n, maxHit | 0, out, outOffset);
 }
 
 /** How many of blocks[start .. start+count) are evictable (refCount 0); referencing them uses capacity. */
@@ -111,28 +137,71 @@ export function canAcquire(
   return need <= pool.freeCount + pool.evictableCount;
 }
 
-// Takes n blocks, free ones first, then evicts from the LRU end. Capacity already checked.
+// ----- Allocation -----
+
+// Takes n blocks into out[outOffset ..]: free ones first (top of the stack first), then the least
+// recently used evictable ones. Capacity already checked.
 function takeBlocks(pool: KvPool, n: number, out: BlockOut, outOffset: number): void {
-  const { refCount, contentKey, freeStack, lruNext, evictedKeys } = pool;
-  const sentinel = pool.totalBlocks;
-  for (let i = 0; i < n; i++) {
-    let block: number;
-    if (pool.freeCount > 0) {
-      block = freeStack[--pool.freeCount]!;
-    } else {
-      block = lruNext[sentinel]!;
-      lruRemove(pool, block);
-      pool.evictableCount--;
-      const key = contentKey[block]!;
-      indexRemove(pool, key);
-      contentKey[block] = NO_KEY;
-      evictedKeys[pool.evictedCount++] = key;
-      pool.evictionsTotal++;
+  const free = pool.freeCount < n ? pool.freeCount : n;
+  if (free > 0) {
+    const { refCount, freeStack } = pool;
+    let top = pool.freeCount;
+    for (let i = 0; i < free; i++) {
+      const block = freeStack[--top]!;
+      refCount[block] = 1;
+      out[outOffset + i] = block;
     }
-    refCount[block] = 1;
-    pool.referencedCount++;
-    out[outOffset + i] = block;
+    pool.freeCount = top;
   }
+  if (free < n) evict(pool, n - free, out, outOffset + free);
+  pool.referencedCount += n;
+}
+
+// Takes the k least recently used evictable blocks into out[at ..], dropping their content keys
+// and reporting them in evictedKeys.
+function evict(pool: KvPool, k: number, out: BlockOut, at: number): void {
+  if (k > pool.evictedKeys.length) {
+    // Scratch only, so nothing to copy; grown geometrically, never past the pool.
+    pool.evictedKeys = new Float64Array(
+      Math.min(pool.totalBlocks, Math.max(k, 2 * pool.evictedKeys.length)),
+    );
+  }
+  const { refCount, contentKey, lruNext, lruPrev, evictedKeys } = pool;
+  const sentinel = pool.totalBlocks;
+  let block = lruNext[sentinel]!;
+  for (let i = 0; i < k; i++) {
+    const next = lruNext[block]!;
+    evictedKeys[i] = contentKey[block]!;
+    indexRemove(pool, block);
+    contentKey[block] = NO_KEY;
+    refCount[block] = 1;
+    out[at + i] = block;
+    block = next;
+  }
+  lruNext[sentinel] = block;
+  lruPrev[block] = sentinel;
+  pool.evictableCount -= k;
+  pool.evictedCount = k;
+  pool.evictionsTotal += k;
+}
+
+// evict for one block, without the loop.
+function evictOne(pool: KvPool, out: BlockOut, at: number): void {
+  const lruNext = pool.lruNext;
+  const sentinel = pool.totalBlocks;
+  const block = lruNext[sentinel]!;
+  const next = lruNext[block]!;
+  lruNext[sentinel] = next;
+  pool.lruPrev[next] = sentinel;
+  pool.evictedKeys[0] = pool.contentKey[block]!;
+  indexRemove(pool, block);
+  pool.contentKey[block] = NO_KEY;
+  pool.refCount[block] = 1;
+  out[at] = block;
+  pool.evictableCount--;
+  pool.evictedCount = 1;
+  pool.evictionsTotal++;
+  pool.referencedCount++;
 }
 
 /**
@@ -144,6 +213,23 @@ function takeBlocks(pool: KvPool, n: number, out: BlockOut, outOffset: number): 
  */
 export function allocateBlocks(pool: KvPool, n: number, out: BlockOut, outOffset: number): boolean {
   pool.evictedCount = 0;
+  // The usual case in a warm pool: one block, none free, so one eviction, into a valid slot.
+  if (
+    n === 1 &&
+    pool.freeCount === 0 &&
+    pool.evictableCount > 0 &&
+    outOffset >= 0 &&
+    Number.isInteger(outOffset) &&
+    !(ArrayBuffer.isView(out) && outOffset >= out.length)
+  ) {
+    evictOne(pool, out, outOffset);
+    return true;
+  }
+  return allocateAny(pool, n, out, outOffset);
+}
+
+// allocateBlocks in general.
+function allocateAny(pool: KvPool, n: number, out: BlockOut, outOffset: number): boolean {
   checkCount(n, 'Block count');
   if (n > pool.freeCount + pool.evictableCount) return false;
   checkOut(out, outOffset, n);
@@ -169,7 +255,6 @@ export function referenceBlocks(
     if (rc === 0) {
       if (contentKey[block] === NO_KEY) throw new Error(`KV block ${block} is free, not cached`);
       lruRemove(pool, block);
-      pool.evictableCount--;
       pool.referencedCount++;
     }
     refCount[block] = rc + 1;
@@ -198,6 +283,8 @@ export function acquireBlocks(
   return true;
 }
 
+// ----- Release -----
+
 /**
  * Drop one reference to each of blocks[start .. start+count), on finish, abort, or preemption.
  * Blocks whose count reaches 0 keep their content: cached blocks join the LRU at the most-recent
@@ -211,23 +298,74 @@ export function releaseBlocks(
   start: number,
   count: number,
 ): void {
-  const { refCount, contentKey, freeStack } = pool;
+  if (count === 1) releaseOne(pool, blocks[start]!);
+  else releaseMany(pool, blocks, start, count);
+}
+
+function releaseMany(pool: KvPool, blocks: ArrayLike<number>, start: number, count: number): void {
+  const { refCount, contentKey, freeStack, lruNext, lruPrev } = pool;
+  const sentinel = pool.totalBlocks;
+  // Cached blocks are appended after `tail`, the most recently used end of the LRU.
+  let tail = lruPrev[sentinel]!;
+  let free = pool.freeCount;
+  let released = 0;
   for (let i = start + count - 1; i >= start; i--) {
     const block = blocks[i]!;
-    checkBlock(pool, block);
-    const rc = refCount[block]!;
-    if (rc <= 0) throw new Error(`KV block ${block} released with refCount ${rc}`);
+    const rc = block >= 0 && block < sentinel ? refCount[block]! : 0;
+    if (!(rc > 0 && Number.isInteger(block))) {
+      endRelease(pool, tail, free, released);
+      throw releaseError(pool, block, rc);
+    }
     refCount[block] = rc - 1;
     if (rc > 1) continue;
-    pool.referencedCount--;
+    released++;
     if (contentKey[block] !== NO_KEY) {
-      lruPushTail(pool, block);
-      pool.evictableCount++;
+      lruNext[tail] = block;
+      lruPrev[block] = tail;
+      tail = block;
     } else {
-      freeStack[pool.freeCount++] = block;
+      freeStack[free++] = block;
+    }
+  }
+  endRelease(pool, tail, free, released);
+}
+
+// Close the LRU after `tail` and write releaseBlocks' counts back to the pool.
+function endRelease(pool: KvPool, tail: number, free: number, released: number): void {
+  const sentinel = pool.totalBlocks;
+  pool.lruNext[tail] = sentinel;
+  pool.lruPrev[sentinel] = tail;
+  pool.evictableCount += released - (free - pool.freeCount);
+  pool.referencedCount -= released;
+  pool.freeCount = free;
+}
+
+// releaseBlocks for one block, without the loop.
+function releaseOne(pool: KvPool, block: number): void {
+  const refCount = pool.refCount;
+  // A typed array reads undefined at any index outside it, including fractions.
+  const rc = refCount[block]!;
+  if (!(rc > 0)) throw releaseError(pool, block, rc);
+  refCount[block] = rc - 1;
+  if (rc === 1) {
+    pool.referencedCount--;
+    if (pool.contentKey[block] === NO_KEY) {
+      pool.freeStack[pool.freeCount++] = block;
+    } else {
+      // lruPushTail, written out.
+      const { lruNext, lruPrev } = pool;
+      const sentinel = pool.totalBlocks;
+      const tail = lruPrev[sentinel]!;
+      lruNext[tail] = block;
+      lruPrev[block] = tail;
+      lruNext[block] = sentinel;
+      lruPrev[sentinel] = block;
+      pool.evictableCount++;
     }
   }
 }
+
+// ----- Registration -----
 
 /**
  * Give a referenced, full block its content key so later lookups can hit it. Returns true if the
@@ -240,25 +378,46 @@ export function releaseBlocks(
  * lookups see the same hits either way, and kvUsedFrac is unaffected.
  */
 export function registerBlock(pool: KvPool, block: number, key: number): boolean {
+  return register(pool, block, key, -1);
+}
+
+// registerBlock, where `from` is an index page of the key's owner to search from, or -1
+// (content.ts).
+function register(pool: KvPool, block: number, key: number, from: number): boolean {
+  // The usual case: a held block with no key yet, and a valid key. (refCount reads undefined for
+  // a block outside the pool.)
+  if (
+    !(pool.refCount[block]! > 0 && pool.contentKey[block] === NO_KEY) ||
+    !(key >= 0 && Number.isSafeInteger(key))
+  ) {
+    return registerOther(pool, block, key);
+  }
+  const holder = indexAdd(pool, key, block, from);
+  if (holder >= 0) return registerDuplicate(pool, key, block, holder);
+  pool.contentKey[block] = key;
+  return true;
+}
+
+// register's other cases, checked in order: a block outside the pool or not held, a block that
+// already has this key (true), or another key, or an invalid key.
+function registerOther(pool: KvPool, block: number, key: number): boolean {
   checkBlock(pool, block);
-  if (pool.refCount[block]! <= 0) throw new Error(`KV block ${block} registered while unheld`);
   const current = pool.contentKey[block]!;
+  if (pool.refCount[block]! <= 0) throw registerError(block, NO_KEY, key);
   if (current === key) return true;
-  if (current !== NO_KEY) {
-    throw new Error(`KV block ${block} has key ${current}; can't register ${key}`);
-  }
-  if (!(key >= 0 && Number.isSafeInteger(key))) throw new RangeError(`Content key ${key}`);
-  const existing = cachedBlock(pool, key);
-  if (existing < 0) {
-    indexInsert(pool, key, block);
-  } else {
-    if (pool.refCount[existing] !== 0) return false;
-    lruRemove(pool, existing);
-    pool.evictableCount--;
-    pool.contentKey[existing] = NO_KEY;
-    pool.freeStack[pool.freeCount++] = existing;
-    indexReplace(pool, key, block);
-  }
+  if (current !== NO_KEY) throw registerError(block, current, key);
+  throw keyError(key);
+}
+
+// Another block, `holder`, holds the content being registered. If it is evictable, it loses the key
+// and becomes free, and `block` takes the key (true); if it is referenced, `block` stays private
+// (false).
+function registerDuplicate(pool: KvPool, key: number, block: number, holder: number): boolean {
+  if (pool.refCount[holder] !== 0) return false;
+  indexReplace(pool, holder, key, block);
+  lruRemove(pool, holder);
+  pool.contentKey[holder] = NO_KEY;
+  pool.freeStack[pool.freeCount++] = holder;
   pool.contentKey[block] = key;
   return true;
 }
@@ -284,8 +443,14 @@ export function registerFullBlocks(
   if (full > KEY_BLOCK_SPAN) throw new RangeError(`Sequence of ${computedTokens} is too long`);
   const systemBlocks = systemPromptTokens > 0 ? Math.floor(systemPromptTokens / pool.blockSize) : 0;
   const sessionBase = sessionBlockKey(session, 0);
+  const { contentKey, keyPage } = pool;
   for (let i = fromBlock; i < full; i++) {
-    registerBlock(pool, blocks[start + i]!, i < systemBlocks ? i : sessionBase + i);
+    const key = i < systemBlocks ? i : sessionBase + i;
+    // The block before this one usually holds key − 1 (same owner, since i > 0): its index page is
+    // this key's page or the one before it, a step at most.
+    const before = i > 0 ? blocks[start + i - 1] : undefined;
+    const from = before !== undefined && contentKey[before] === key - 1 ? keyPage[before]! : -1;
+    register(pool, blocks[start + i]!, key, from);
   }
   return full;
 }

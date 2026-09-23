@@ -26,8 +26,21 @@ export const MAX_KEY_SESSION = 0xffff_ffff;
 
 function checkBlockIndex(blockIndex: number): void {
   if (!(blockIndex >= 0 && blockIndex < KEY_BLOCK_SPAN && Number.isInteger(blockIndex))) {
-    throw new RangeError(`KV block index ${blockIndex} is outside [0, ${KEY_BLOCK_SPAN})`);
+    throw blockIndexError(blockIndex);
   }
+}
+
+// Errors are built out of line so the key functions stay small enough for V8 to inline.
+
+function blockIndexError(blockIndex: number): RangeError {
+  return new RangeError(`KV block index ${blockIndex} is outside [0, ${KEY_BLOCK_SPAN})`);
+}
+
+function sessionKeyError(session: SessionId, blockIndex: number): RangeError {
+  if (!(session >= 0 && session <= MAX_KEY_SESSION && Number.isInteger(session))) {
+    return new RangeError(`Session id ${session} is outside [0, ${MAX_KEY_SESSION}]`);
+  }
+  return blockIndexError(blockIndex);
 }
 
 /** Key of block `blockIndex` of the shared system prompt. */
@@ -38,10 +51,14 @@ export function systemBlockKey(blockIndex: number): number {
 
 /** Key of block `blockIndex` of a session's sequence (history, new message, and output). */
 export function sessionBlockKey(session: SessionId, blockIndex: number): number {
-  if (!(session >= 0 && session <= MAX_KEY_SESSION && Number.isInteger(session))) {
-    throw new RangeError(`Session id ${session} is outside [0, ${MAX_KEY_SESSION}]`);
+  // x >>> 0 === x holds exactly for the integers 0 .. 2^32 − 1 (MAX_KEY_SESSION).
+  if (
+    session >>> 0 !== session ||
+    blockIndex >>> 0 !== blockIndex ||
+    blockIndex >= KEY_BLOCK_SPAN
+  ) {
+    throw sessionKeyError(session, blockIndex);
   }
-  checkBlockIndex(blockIndex);
   return (session + 1) * KEY_BLOCK_SPAN + blockIndex;
 }
 
