@@ -7,7 +7,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | F1 Scaffold | merged | main | Vite 8, React 19, TS 6.0 (typescript-eslint doesn't support TS 7 yet), Tailwind 4, Vitest 5, ESLint 10, pnpm 9 |
 | F2 Contracts | merged | main | Contracts in §4; provisional calibration; fixtures in `src/fixtures/` |
 | S1 Scale spike | running | | |
-| E1 Keyed RNG | running | | |
+| E1 Keyed RNG | merged | main | `u01(seed, Source.x, k0..k5)` plus inverse-CDF transforms; think time is log-logistic (K23); ~20M draws/s in Node |
 | E2 Event core | running | | |
 | E3 Cost model | merged | main | Batch-1 TPOT +5% at 8k, +20% at 32k, +77% at 122,880 (K3 holds); TTFT 38 s at 120k. Tab 3 compute-util bound tightened in §7.3. |
 | E4 KV blocks | running | | |

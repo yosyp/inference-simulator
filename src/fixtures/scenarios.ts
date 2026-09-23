@@ -27,7 +27,7 @@ export function fixtureSimConfig(replicas: number): SimConfig {
     messageTokensSigma: 0.8,
     outputTokensSigma: 0.7,
     outputTokensMax: 4096,
-    thinkTimeShape: 2,
+    thinkTimeShape: 3,
     virtualNodesPerReplica: 64,
     routerOverheadMs: 2,
     detectionDelayMs: 10_000,

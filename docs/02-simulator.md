@@ -144,7 +144,7 @@ bytes ≈ 16.06 GB weights + 128 KiB × (context tokens attended across the batc
 - **Distributions:** parametric (Theme 2 Q5):
   - new-message length and output length: lognormal
   - turns per session: geometric
-  - think time: parametric distribution, family chosen during build
+  - think time: log-logistic (median, shape β), K23. It has a closed-form inverse (one uniform per keyed draw), the median is a direct parameter, and its power-law tail produces the long absences that decide whether KV history survives (tab 4). Keep β > 2 for a finite variance; the load generator caps think time at the shift's end.
 - **Client behavior (K8):**
   - The timeout runs to the first token. A streaming client gives up when nothing has arrived; once tokens flow, there is no timeout.
   - Retry policies are immediate, fixed, exponential, and full jitter. Jitter is keyed by (request, attempt). Max retries is a parameter.
@@ -226,6 +226,7 @@ Storage (K7): per-request data is columnar (typed arrays), never one object per 
 | K8 | Client semantics | Timeout to first token vs. total; on retry exhaustion skip the turn vs. abandon the session | Timeout to first token; the session is abandoned after retries are exhausted; failed turns never enter history |
 | K9 | Form of the admission limit (open item 2) | Queue at the router; per-replica in-flight cap; fleet outstanding cap | Fleet outstanding cap = per-replica limit × Ready replicas, tracked exactly by the router |
 | K21 | Tabs open mid-week; a continuous week needs ~8M events before tab 5's first frame | Independent days; continuous week with checkpoints shipped in the build; continuous week behind a loading screen | Independent days from a standard morning state (§8); the lesson day is computed first |
+| K23 | Think-time distribution family (§8) | Gamma; log-logistic; exponential | Log-logistic (median, shape): closed-form inverse, median as a parameter, a realistic heavy tail |
 
 ## 14. Open items
 

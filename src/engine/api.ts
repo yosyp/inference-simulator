@@ -69,7 +69,7 @@ export interface SimConfig {
   messageTokensSigma: number;
   outputTokensSigma: number;
   outputTokensMax: number;
-  /** Shape parameter of the think-time family E1 chooses; the median is tunable. */
+  /** Log-logistic think-time shape β (the median is tunable): the mean is finite for β > 1, the variance for β > 2. */
   thinkTimeShape: number;
   virtualNodesPerReplica: number;
   routerOverheadMs: number;

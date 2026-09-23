@@ -501,6 +501,7 @@ Integration is local (K19): one worktree and branch per WP, merged into `main` b
 - **Manual worktrees.** Run `git worktree add ../inference-simulator.wt/<wp> -b wp/<wp>-<slug> main`, then `pnpm install` inside it.
 - **Ownership.** Edit only your owned paths and your own tests. Reading anything is fine. No two active WPs own the same path.
 - **Contract changes.** Stop and describe the change. The integrator commits it on `main` on its own, and dependents rebase. You may prototype an additive optional field in your branch, but flag it at the top of your handoff note.
+- **RNG sources.** `src/engine/rng/sources.ts` is append-only. Any engine WP may add a new source entry with the next unused integer; never renumber or reuse one.
 - **Dependencies.** F1 installs the stack. If you need another package, ask the integrator, who adds it on `main`, so lockfile conflicts happen once.
 - **Handoff.**
   - Rebase onto current `main` and make sure `pnpm verify` is green.
