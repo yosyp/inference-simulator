@@ -31,6 +31,8 @@ interface Guards {
   consoleErrors: string[];
   pageErrors: string[];
   assetResponses: Response[];
+  /** The script URL of every Web Worker the page started. */
+  workers: string[];
 }
 
 function readSiteHeaders(): Record<string, string> {
@@ -108,11 +110,13 @@ export async function installGuards(page: Page, baseURL: string): Promise<Guards
     consoleErrors: [],
     pageErrors: [],
     assetResponses: [],
+    workers: [],
   };
 
   await page.addInitScript(recordCspViolations);
 
   page.on('worker', (worker) => {
+    guards.workers.push(worker.url());
     worker.evaluate(reportWorkerCspViolations).catch(() => {
       // The worker ended before the listener attached; nothing left to watch.
     });
