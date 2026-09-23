@@ -102,6 +102,7 @@ scripts/         # headless scenario runner, perf harness, fixtures
 | K11 | Where and how does the engine run, given ~10–15M events per Server B week (02 §5)? | Worker streaming ahead; Worker computing the full week first; main thread as decided | Web Worker from day one, streaming chunks ahead of the playhead, with periodic checkpoints; forks restore the nearest checkpoint (supersedes Q1) |
 | K12 | Test layers | Unit only; plus differential oracle; plus lesson assertions; plus production-CSP smoke test; plus perf budget test in CI | Unit tests, a differential oracle, scenario lesson assertions, and one Playwright smoke test under the production CSP. Perf budgets are checked by a local harness, not in CI (supersedes Q6). |
 | K13 | Chart transitions with React-owned SVG | d3-transition; tween data and let React render | Tween data with d3-interpolate and d3-timer; React renders |
+| K30 | G1: how to meet P1 (first frame ≤ 3 s) given S1's measurements | Keep 3 s with early lesson moments on Server A/B; relax to 5 s; ship precomputed entry checkpoints | Keep 3 s. Server B tabs enter by 09:30 simulated time, Server A by about 12:00; small tabs are unconstrained. E4's block cycle gets faster (E4b). |
 
 ## 7. Open items
 

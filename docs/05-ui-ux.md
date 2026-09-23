@@ -77,7 +77,7 @@ Three charts are stacked with one shared time axis and vertically aligned, so th
 
 - **Multiple replicas:** a fleet line with the worst replica highlighted, which stays readable at 8 replicas.
 - **Rendering:** React SVG with d3 scales, drawing at most one bucket per pixel column.
-- **Percentiles:** computed from merged histograms, so any zoom level is exact to within about 1–2%. The scale spike may loosen this if the memory budget requires it (04 §7).
+- **Percentiles:** computed from merged histograms. With 2× bins (K29) the error is about 1% typical and up to ~7% in a busy minute.
 - **Sparse buckets:** when a bucket holds too few requests for a stable percentile, as on tab 1 with one analyst, the chart plots individual requests instead.
 - **Why TTFT leads (K14):** E2E latency includes output length. With lognormal outputs, E2E p99 is already 3–5× the mean at idle, which blurs the knee. TTFT is the clean queueing signal. E2E remains the High-side metric, because that is what the rollup contains.
 

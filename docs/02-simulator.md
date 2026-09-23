@@ -92,7 +92,7 @@ Between events the batch composition on a replica is fixed. The engine computes 
 
 Step duration grows as context grows, so the time for k decode steps is a sum over a growing series and is solved analytically. Token counts at any instant remain computable, so the canvas can animate per token.
 
-Expected scale (revised, K7). A replica limited by KV serves roughly 3 requests/s at ~300-token outputs, so reaching the knee takes several hundred analysts per replica. A Server B work week at knee-level load is then about 1.5–2M requests and 10–15M events, against tens of millions of engine steps. Near the knee a new arrival lands every ~10 decode steps, so event-jumping saves about one order of magnitude, not two. These are estimates; the scale spike in 00-build (S1) measures the real figures.
+Expected scale (measured in S1, K28; earlier estimate K7). S1 (`docs/spikes/s1-scale.md`) measured a Server B knee week at about 1.2–1.5M requests, ~6M model events, ~50M engine steps, and ~250M KV block evictions. Under round-robin the knee is compute-bound at about 1.3 requests/s per replica, because every turn re-prefills its history. The costliest engine work is KV block bookkeeping (every allocation in a warm pool evicts), not steps; event-jumping saves about 2×.
 
 ## 6. Step cost model (roofline, three calibrated numbers)
 
@@ -114,7 +114,7 @@ bytes ≈ 16.06 GB weights + 128 KiB × (context tokens attended across the batc
 
 ### Per replica, per step (mirrors vLLM V1)
 
-1. **Admission to running.** A waiting request is scheduled when blocks for its uncached prompt tokens are free. Prefix-cache hits reduce the blocks needed. No blocks are reserved for future output.
+1. **Admission to running.** A waiting request is scheduled when blocks for its whole uncached prompt are free (vLLM 0.20.1's can_fit_full_sequence check), but blocks are allocated chunk by chunk as prefill proceeds. Prefix-cache hits reduce the blocks needed. No blocks are reserved for future output.
 2. **Step composition.** Running decodes go first, one token each. Prefill chunks fill the remaining token budget (max_num_batched_tokens), within the max_num_seqs cap.
 3. **Block growth.** Decode allocates a new block each time a request crosses a block boundary.
 4. **Preemption.** If a running request cannot get a block, the most recently admitted running request is preempted: its blocks are freed and it goes to the front of the waiting queue. It recomputes when rescheduled. Recompute is the only preemption mode.
@@ -228,6 +228,8 @@ Storage (K7): per-request data is columnar (typed arrays), never one object per 
 | K21 | Tabs open mid-week; a continuous week needs ~8M events before tab 5's first frame | Independent days; continuous week with checkpoints shipped in the build; continuous week behind a loading screen | Independent days from a standard morning state (§8); the lesson day is computed first |
 | K23 | Think-time distribution family (§8) | Gamma; log-logistic; exponential | Log-logistic (median, shape): closed-form inverse, median as a parameter, a realistic heavy tail |
 | K27 | Same-instant ordering and patch timing (decided in E2) | — | At one instant: patches first, then infrastructure (failure and recovery), then the engine, then client timeouts, then the router, then arrivals. The engine going before client timeouts means a first token landing exactly at the timeout counts (K8). 'set' patches dated before a day apply before any module initialises; patches inside the day, including one at exactly midnight, apply first at their instant. Modules share three notification topics: firstToken, requestEnded, replicaState. |
+| K28 | G1: per-request storage (§11) | Full records everywhere (projected 470–620 MB for Server B, over P4); detail on demand for Server A/B; detail on demand everywhere | Full records (`detail: 'all'`) for the 1-GPU and 2-replica tabs; Server A and B keep scalars, histograms, and the tracked analyst's full records, and re-simulate detail for canvas dots on demand |
+| K29 | G1: histogram layout (§11) | Dense 32-bit at current bins (p99 error up to 14%); dense 16-bit with 2× bins; sparse (CSR) with 2× bins | Sparse CSR histograms with 2× bins (ttft 192, tpot 128, e2e 192; bin ratio ≈ 1.075): ~7 MB per Server B week, p99 error up to ~7% |
 
 ## 14. Open items
 

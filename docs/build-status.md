@@ -6,24 +6,25 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 |---|---|---|---|
 | F1 Scaffold | merged | main | Vite 8, React 19, TS 6.0 (typescript-eslint doesn't support TS 7 yet), Tailwind 4, Vitest 5, ESLint 10, pnpm 9 |
 | F2 Contracts | merged | main | Contracts in §4; provisional calibration; fixtures in `src/fixtures/` |
-| S1 Scale spike | running | | |
+| S1 Scale spike | merged | main | Report: `docs/spikes/s1-scale.md`. G1 decided K28 (storage), K29 (sparse histograms, 2× bins), K30 (P1 3 s, early A/B entry). |
 | E1 Keyed RNG | merged | main | `u01(seed, Source.x, k0..k5)` plus inverse-CDF transforms; think time is log-logistic (K23); ~20M draws/s in Node |
 | E2 Event core | merged | main | `createDayRunner(modules)`; `defineModule`; two-number event payloads; kind ranges E6 100s, E7 200s, E5 300s, E8 400s, E9 500s; ~2M events/s in the core; K27 |
 | E3 Cost model | merged | main | Batch-1 TPOT +5% at 8k, +20% at 32k, +77% at 122,880 (K3 holds); TTFT 38 s at 120k. Tab 3 compute-util bound tightened in §7.3. |
+| E4b KV fast path | todo | | Cycle cost ~140 ns → ≤ 30 ns, same API (G1) |
 | E4 KV blocks | merged | main | Recipe at the top of `src/engine/kv/index.ts`; ~9 µs per request lifecycle; warm-pool clone 0.31 ms / 310 KiB. Free-block order follows vLLM ≥0.26 (0.20.1 differs by ~1 partial block per request; one-line change if parity matters). |
-| E5 Scheduler | running | | |
-| E6 Load generator | running | | |
-| E7 Router | running | | |
+| E5 Scheduler | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
+| E6 Load generator | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
+| E7 Router | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
 | E8 Failure | todo | | |
-| E9 Metrics | running | | Parameterized; S1's storage recommendations fold in after G1 |
+| E9 Metrics | paused | worktree kept | Stopped by the session limit; on resume, adopt K28/K29 (sparse histograms) |
 | E10 Oracle | todo | | |
 | E11 Assembly and worker | todo | | Must follow protocol.ts ordering and detail-chunk rules (U2, U8 handoffs) |
 | U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
-| U3 Canvas | running | | |
-| U4 Charts | running | | |
-| U5 Timeline | running | | |
-| U6 Chrome and sidebar | running | | |
+| U3 Canvas | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
+| U4 Charts | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
+| U5 Timeline | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
+| U6 Chrome and sidebar | paused | worktree kept | Stopped by the account session limit; resume after 06:30 UTC |
 | U7 High side | todo | | |
 | U8 Results index | merged | main | `createResultsStore(replicas)`; whole-week chart redraw ~30 ms for 72 queries; detail memory unbounded by default (~3 MB per 10-min Server B window; `maxDetailChunks` if needed). X1: pass `createResults: createResultsStore`. |
 | C1 Runner | todo | | |
@@ -42,7 +43,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 
 ## Measurements
 
-(`pnpm perf` results and budget checks land here.)
+S1 (spike engine, this host): Server B knee day 7–8 s wall; 2,200–3,900× at peak with a prefix cache; 05:00→10:00 in 3.0–3.7 s ticking. Checkpoint clone 2–6 ms. See `docs/spikes/s1-scale.md`.
 
 ## v2 ideas
 

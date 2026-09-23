@@ -621,7 +621,9 @@ These are checked by `pnpm perf` and a Chrome performance recording at G1, M2, M
 | P5 | Main-thread long tasks during playback at any speed | None > 50 ms | Chrome performance panel |
 | P6 | Initial JS, gzip | ≤ 300 KB | `vite build` report |
 
-P1 depends on how far into its day a tab's entry point sits, because the worker computes from that day's morning (K21). S1 reports the latest viable entry time, and C2 and C3 place lesson moments to fit it.
+P1 depends on how far into its day a tab's entry point sits, because the worker computes from that day's morning (K21). G1 kept P1 at 3 s (K30): Server B tabs enter at or before 09:30 simulated time and Server A tabs by about 12:00, so C3 shapes those scenarios' diurnal peaks early. The 1-GPU and 2-replica tabs are unconstrained. The lesson assertions check each tab's entry time.
+
+**G1 decisions (September 2026, from S1).** Chunks are 5 simulated minutes, with a 1-minute chunk first after init or a fork and one chunk for each off-shift night. Checkpoints every 15 simulated minutes, kept for the playhead's day. bucketMs 10 s and histBucketMs 60 s, emitted over each day's active window only. Storage per K28; histograms per K29. E4's allocate-evict-register-release cycle must drop from about 140 ns to 30 ns or less (follow-up WP E4b, same API), or the Server B entry limit moves to about 09:00.
 
 ## 9. Deployment
 
