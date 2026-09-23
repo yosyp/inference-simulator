@@ -153,8 +153,10 @@ export function createFakeTransport(options: FakeTransportOptions = {}): FakeTra
     const from = r.progress[day]!;
     const dayEnd = (day + 1) * DAY_MS;
     const to = Math.min(dayEnd, (Math.floor(from / chunkMs) + 1) * chunkMs);
-    const chunk = trackedOnly(r, makeFixtureChunk(fixtureOpts(r, day), from, to));
-    r.trackedPieces[day]!.push({ requests: chunk.requests, transitions: chunk.transitions });
+    const raw = makeFixtureChunk(fixtureOpts(r, day), from, to);
+    // Keep the fixture's tracked records even while nobody is tracked, so a later track has a trace.
+    r.trackedPieces[day]!.push({ requests: raw.requests, transitions: raw.transitions });
+    const chunk = trackedOnly(r, raw);
     r.progress[day] = to;
     deliver({ type: 'chunk', runId: r.runId, revision: r.revision, chunk });
     deliver({ type: 'progress', runId: r.runId, revision: r.revision, computed: computed(r) });

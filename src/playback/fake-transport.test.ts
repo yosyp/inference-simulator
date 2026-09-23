@@ -136,6 +136,19 @@ describe('fake transport', () => {
     expect(last.requests.count === 0 || last.requests.analyst[0] === 42).toBe(true);
   });
 
+  it('streams no tracked records while untracked, but can still trace the time computed meanwhile', () => {
+    const { queue, fake, init, of } = setup();
+    fake.postMessage(init);
+    fake.postMessage({ type: 'track', runId: 1, analyst: null });
+    queue.runAll(40);
+    const streamed = of('chunk').slice(1);
+    expect(streamed.length).toBeGreaterThan(5);
+    expect(streamed.every((m) => m.chunk.requests.count === 0)).toBe(true);
+    fake.postMessage({ type: 'track', runId: 1, analyst: 3 });
+    queue.runUntil(() => of('trace').length > 0);
+    expect(of('trace')[0]!.chunk.requests.count).toBeGreaterThan(0);
+  });
+
   it('answers requestDetail with an all-scope chunk for the window', () => {
     const { queue, fake, init, of } = setup();
     fake.postMessage(init);
