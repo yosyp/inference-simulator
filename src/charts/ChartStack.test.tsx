@@ -106,19 +106,18 @@ describe('ChartStack rendering', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('works on the fixture playback store', () => {
+  it('takes chart 3, the shift, and the lesson moment from the loaded scenario', () => {
     const store = createFixturePlaybackStore();
     const scenario = fixtureScenarios()[4]!;
     act(() => store.loadScenario(scenario));
-    const { container } = render(
-      <ChartStack
-        store={store}
-        chart3={scenario.chart3}
-        shift={scenario.sim.shift}
-        lessonMoment={scenario.lessonMoment}
-      />,
+    const { container } = render(<ChartStack store={store} width={1000} />);
+    const charts = [...container.querySelectorAll('[data-chart]')].map((c) =>
+      c.getAttribute('data-chart'),
     );
-    expect(container.querySelectorAll('[data-chart]')).toHaveLength(3);
+    expect(charts).toEqual(['latency', 'memory', 'perReplicaLoad']);
+    expect(screen.getByText('Wed 07:00–17:00')).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-marker="lesson"]')).toHaveLength(3);
+    expect(screen.getByText(scenario.lessonMoment.label)).toBeInTheDocument();
     store.dispose();
   });
 
@@ -165,6 +164,15 @@ describe('ChartStack window and zoom', () => {
     await user.click(screen.getByRole('button', { name: 'Shift day' }));
     expect(screen.getByText('Wed 07:00–17:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
+  });
+
+  it('starts a new run (tab load or Reset) at the default window', async () => {
+    const user = userEvent.setup();
+    const { store } = setup({ replicas: 1, chart3: 'utilization' });
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(screen.getByText('Wed 10:00–14:00')).toBeInTheDocument();
+    act(() => store.set({ runId: 2 }));
+    expect(screen.getByText('Wed 07:00–17:00')).toBeInTheDocument();
   });
 
   it('reads values at a keyboard cursor and zooms from the keyboard', async () => {

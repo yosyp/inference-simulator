@@ -47,10 +47,11 @@ import { ZoomControls } from './ZoomControls.tsx';
 
 export interface ChartStackProps {
   store: PlaybackStore;
-  chart3: Chart3Kind;
-  /** The scenario's analyst shift (SimConfig.shift): the default window is the playhead's shift. */
-  shift: Shift;
-  /** Marked on every chart (K26); labelled on the top one. */
+  /** The tab's chart 3. Default: the loaded scenario's. */
+  chart3?: Chart3Kind;
+  /** Analyst shift (SimConfig.shift); the default window is the playhead's shift. Default: the loaded scenario's. */
+  shift?: Shift;
+  /** Marked on every chart (K26), labelled on the top one. Default: the loaded scenario's; null hides it. */
   lessonMoment?: LessonMoment | null;
   /** High-side rows to draw (U7 filters by delivery). Default: rows delivered by the playhead. */
   rollupRows?: readonly RollupRow[];
@@ -67,6 +68,8 @@ export interface ChartStackProps {
 }
 
 interface ChartSnapshot {
+  /** A new run (tab load or Reset) starts at the default window. */
+  runId: number;
   playheadMs: number;
   mode: Mode;
   forks: PlaybackState['forks'];
@@ -76,6 +79,7 @@ interface ChartSnapshot {
 
 function selectCharts(s: PlaybackState, index: ResultsIndex): ChartSnapshot {
   return {
+    runId: s.runId,
     playheadMs: s.playheadMs,
     mode: s.mode,
     forks: s.forks,
@@ -86,6 +90,7 @@ function selectCharts(s: PlaybackState, index: ResultsIndex): ChartSnapshot {
 
 function sameSnapshot(a: ChartSnapshot, b: ChartSnapshot): boolean {
   return (
+    a.runId === b.runId &&
     a.playheadMs === b.playheadMs &&
     a.mode === b.mode &&
     a.forks === b.forks &&
@@ -93,6 +98,9 @@ function sameSnapshot(a: ChartSnapshot, b: ChartSnapshot): boolean {
     a.replicas === b.replicas
   );
 }
+
+/** Before any scenario is loaded: the whole day. */
+const WHOLE_DAY: Shift = { startMs: 0, endMs: DAY_MS };
 
 /** Ctrl/⌘ + wheel delta that makes one zoom step. */
 const WHEEL_STEP = 60;
@@ -110,9 +118,9 @@ export function pendingDaysAt(playheadMs: number, rows: readonly RollupRow[]): D
 
 export function ChartStack({
   store,
-  chart3,
-  shift,
-  lessonMoment = null,
+  chart3: chart3Prop,
+  shift: shiftProp,
+  lessonMoment: lessonProp,
   rollupRows,
   calibration = defaultCalibration,
   loadMetric = 'outstanding',
@@ -122,10 +130,22 @@ export function ChartStack({
 }: ChartStackProps) {
   const snap = usePlaybackSelector(store, selectCharts, { maxHz, equals: sameSnapshot });
   const index = store.index;
+  const scenario = store.scenario;
+  const chart3 = chart3Prop ?? scenario?.chart3 ?? 'utilization';
+  const shift = shiftProp ?? scenario?.sim.shift ?? WHOLE_DAY;
+  const lessonMoment = lessonProp === undefined ? (scenario?.lessonMoment ?? null) : lessonProp;
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const measured = useElementWidth(container);
   const geo = stackGeometry(width ?? measured ?? FALLBACK_WIDTH_PX, height);
-  const [view, setView] = useState<ChartView | null>(null);
+  // Zoom belongs to a run: a new run (tab load, Reset) starts at the default window.
+  const [zoomState, setZoomState] = useState<{ runId: number; view: ChartView | null }>({
+    runId: snap.runId,
+    view: null,
+  });
+  const view = zoomState.runId === snap.runId ? zoomState.view : null;
+  const runId = snap.runId;
+  const setView = (next: (v: ChartView | null) => ChartView | null) =>
+    setZoomState((z) => ({ runId, view: next(z.runId === runId ? z.view : null) }));
   const [cursorMs, setCursorMs] = useState<number | null>(null);
   const [spoken, setSpoken] = useState('');
   const keysId = useId();
@@ -193,9 +213,9 @@ export function ChartStack({
         (playheadMs >= w.fromMs && playheadMs <= w.toMs ? playheadMs : (w.fromMs + w.toMs) / 2);
       return dir === 'in' ? zoomIn(v, w, f, shift) : zoomOut(v, w, f, shift);
     });
-  const latest = useRef({ playheadMs, shift, plotWidth: geo.plotWidth });
+  const latest = useRef({ playheadMs, shift, plotWidth: geo.plotWidth, runId });
   useEffect(() => {
-    latest.current = { playheadMs, shift, plotWidth: geo.plotWidth };
+    latest.current = { playheadMs, shift, plotWidth: geo.plotWidth, runId };
   });
   useEffect(() => {
     if (!container) return;
@@ -207,13 +227,14 @@ export function ChartStack({
       if (Math.abs(acc) < WHEEL_STEP) return;
       const dir = acc < 0 ? 'in' : 'out';
       acc = 0;
-      const { playheadMs: t, shift: sh, plotWidth } = latest.current;
+      const { playheadMs: t, shift: sh, plotWidth, runId: run } = latest.current;
       const rel =
         (e.clientX - container.getBoundingClientRect().left - PLOT_INSET.left) / plotWidth;
-      setView((v) => {
+      setZoomState((z) => {
+        const v = z.runId === run ? z.view : null;
         const w = resolveWindow(v, t, sh);
         const f = w.fromMs + Math.min(1, Math.max(0, rel)) * (w.toMs - w.fromMs);
-        return dir === 'in' ? zoomIn(v, w, f, sh) : zoomOut(v, w, f, sh);
+        return { runId: run, view: dir === 'in' ? zoomIn(v, w, f, sh) : zoomOut(v, w, f, sh) };
       });
     };
     container.addEventListener('wheel', onWheel, { passive: false });
@@ -250,7 +271,7 @@ export function ChartStack({
         zoom('out');
         break;
       case '0':
-        setView(null);
+        setView(() => null);
         break;
       default:
         return;
@@ -321,7 +342,7 @@ export function ChartStack({
               canOut={canZoomOut(view)}
               onIn={() => zoom('in')}
               onOut={() => zoom('out')}
-              onReset={() => setView(null)}
+              onReset={() => setView(() => null)}
             />
           </>
         ) : (

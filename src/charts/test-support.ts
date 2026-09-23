@@ -2,6 +2,7 @@
 // wrapper that overrides chosen queries. Imported only by tests.
 
 import type { PlaybackState, PlaybackStore, ResultsIndex } from '../playback/types.ts';
+import type { Scenario } from '../scenarios/schema.ts';
 
 export interface StaticStore extends PlaybackStore {
   /** Replaces part of the state and notifies subscribers. */
@@ -25,6 +26,7 @@ const BASE_STATE: PlaybackState = {
 export function createStaticStore(
   index: ResultsIndex,
   state: Partial<PlaybackState> = {},
+  scenario: Scenario | null = null,
 ): StaticStore {
   let current: PlaybackState = { ...BASE_STATE, ...state };
   const listeners = new Set<() => void>();
@@ -38,6 +40,7 @@ export function createStaticStore(
     get index() {
       return index;
     },
+    scenario,
     set(patch) {
       current = { ...current, ...patch };
       for (const l of [...listeners]) l();
