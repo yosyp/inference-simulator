@@ -68,7 +68,7 @@ export interface RequestTable {
   outputTarget: Uint32Array;
   /** Tokens generated when the request ended. */
   outputDone: Uint32Array;
-  /** Prompt tokens served from the prefix cache at the (last) admission. */
+  /** Prompt tokens served from the prefix cache at the admission that produced the first token; 0 if the request ended before its first token. */
   cachedTokens: Uint32Array;
   preemptions: Uint16Array;
   /** OUTCOME code, or OUTCOME_PENDING. */

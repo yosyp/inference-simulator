@@ -569,7 +569,7 @@ Vitest, in `*.test.ts(x)` files next to the code. Engine tests call `assertInvar
 
 ### 7.2 Differential oracle
 
-E10. Every `pnpm test` runs 200 seeds. Run `pnpm test:oracle:long` (5,000 seeds) before merging any change to E3, E4, E5, or E7.
+E10. Every `pnpm test` runs 200 seeds. Run `pnpm test:oracle:long` (5,000 seeds) before merging any change to E3, E4, E5, or E7. `ORACLE_SEED=n` reruns one seed; a failure prints the seed, the first diverging event, and whether E5 with jumping off agrees (a rule difference vs. a jumping bug). The oracle shares E3's cost model and E4's pool with the engine, so it can't catch bugs inside those two; their own tests cover them.
 
 ### 7.3 Lesson assertions
 
