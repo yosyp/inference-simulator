@@ -62,7 +62,7 @@ export interface RequestTable {
   endMs: Float64Array;
   /** Whole prompt: system prompt + conversation history + new message. */
   promptTokens: Uint32Array;
-  /** System prompt length in effect when the request was created (for KV block identity, E4). */
+  /** System prompt length in effect when the request's session started (E6 freezes it per session, so KV block identity stays stable, E4). */
   systemPromptTokens: Uint32Array;
   /** Tokens the simulator will generate (known to the simulator, not the router, 02 §1). */
   outputTarget: Uint32Array;
@@ -129,12 +129,29 @@ function grow(t: RequestTable): void {
   t.capacity = cap;
 }
 
+// Written out field by field: a generic loop over the field lists cost ~3.5% of a knee day (E6).
 function clearSlot(t: RequestTable, s: RequestSlot): void {
-  for (const f of U8) t[f][s] = 0;
-  for (const f of I8) t[f][s] = -1;
-  for (const f of U16) t[f][s] = 0;
-  for (const f of U32) t[f][s] = 0;
-  for (const f of F64) t[f][s] = NaN;
+  t.live[s] = 0;
+  t.attempt[s] = 0;
+  t.kind[s] = 0;
+  t.state[s] = 0;
+  t.outcome[s] = 0;
+  t.replica[s] = -1;
+  t.prevReplica[s] = -1;
+  t.turn[s] = 0;
+  t.preemptions[s] = 0;
+  t.id[s] = 0;
+  t.session[s] = 0;
+  t.analyst[s] = 0;
+  t.promptTokens[s] = 0;
+  t.systemPromptTokens[s] = 0;
+  t.outputTarget[s] = 0;
+  t.outputDone[s] = 0;
+  t.cachedTokens[s] = 0;
+  t.arriveMs[s] = NaN;
+  t.dispatchMs[s] = NaN;
+  t.firstTokenMs[s] = NaN;
+  t.endMs[s] = NaN;
 }
 
 /**

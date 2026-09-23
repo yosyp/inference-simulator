@@ -13,7 +13,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E4b KV fast path | running | | Cycle cost ~140 ns → ≤ 30 ns, same API (G1) |
 | E4 KV blocks | merged | main | Recipe at the top of `src/engine/kv/index.ts`; ~9 µs per request lifecycle; warm-pool clone 0.31 ms / 310 KiB. Free-block order follows vLLM ≥0.26 (0.20.1 differs by ~1 partial block per request; one-line change if parity matters). |
 | E5 Scheduler | running | | Resumed after a transient API error |
-| E6 Load generator | running | | Resumed after a transient API error |
+| E6 Load generator | merged | main | `loadModule`, `sessionPlan`; ~4 requests/session; session ids are sparse (candidate indices; extras ≥ 2^31) — never size storage by session count. C2: tab 3's 'long conversations' and tab 2's rate step are lasting 'set' patches today (they carry into later days); decide with the author whether a one-shot workload InjectedEvent is needed. |
 | E7 Router | merged | main | Admission counts admitted-not-ended (incl. router overhead); no routable replica → reject. C3: use virtualNodesPerReplica ≥ 128 (64 lets one replica own ~15.6% of the ring). Signal refresh runs all day (~86k events at 1 s). |
 | E8 Failure | running | | Started early: only emits replicaState, which E5 and E7 consume |
 | E9 Metrics | merged | main | `metricsModule`, `dayRollup(state)`, `inFlightTransitions(...)` for detail replays; slice ~23 KB, clone 47 µs; ~1.4–2 µs per request. Rollup utilization = busy within the shift ÷ shift length. Open: 'active window only' emission (skip night buckets) — needs a small contract (E11/E9 follow-up). |
@@ -21,7 +21,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E11 Assembly and worker | todo | | Must follow protocol.ts ordering and detail-chunk rules (U2, U8 handoffs) |
 | U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
-| U3 Canvas | running | | Resumed after a transient API error |
+| U3 Canvas | merged | main | `<SimCanvas store={store} />` fills the canvas slot; ~0.5 ms main-thread per frame at 1,000 dots. Optional later: `TrackedRequestView.prevReplica`. |
 | U4 Charts | running | | Resumed after a transient API error |
 | U5 Timeline | merged | main | `WeekTimeline({ store })`, 72 px; playhead moves per frame without React re-renders; K31. Incident markers other than the lesson moment aren't drawn (tabs 5–6: the lesson moment is the incident). |
 | U6 Chrome and sidebar | merged | main | `pnpm e2e` now exercises every tab, modal, play, toggle, drawer, reset. X1 swaps `createAppScenarios`/`createAppStore` and the `SlotPlaceholder`s in App.tsx, and keeps one of the two clocks (toolbar vs timeline). Tooltip fixed (no open on click-focus). Toolbar token 78 px. X3: intro says 'Calibrated on…' while calibration is provisional. |
