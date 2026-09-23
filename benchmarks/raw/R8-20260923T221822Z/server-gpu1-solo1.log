@@ -1,0 +1,141 @@
+1790202289.771 # harness process_start gpu=1 label=solo1
+1790202294.824 (APIServer pid=3820400) INFO 09-23 22:24:54 [utils.py:299] 
+1790202294.824 (APIServer pid=3820400) INFO 09-23 22:24:54 [utils.py:299]        █     █     █▄   ▄█
+1790202294.824 (APIServer pid=3820400) INFO 09-23 22:24:54 [utils.py:299]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.20.1
+1790202294.824 (APIServer pid=3820400) INFO 09-23 22:24:54 [utils.py:299]   █▄█▀ █     █     █     █  model   meta-llama/Llama-3.1-8B-Instruct
+1790202294.825 (APIServer pid=3820400) INFO 09-23 22:24:54 [utils.py:299]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+1790202294.825 (APIServer pid=3820400) INFO 09-23 22:24:54 [utils.py:299] 
+1790202294.828 (APIServer pid=3820400) INFO 09-23 22:24:54 [utils.py:233] non-default args: {'model_tag': 'meta-llama/Llama-3.1-8B-Instruct', 'host': '127.0.0.1', 'port': 8002, 'disable_uvicorn_access_log': True, 'model': 'meta-llama/Llama-3.1-8B-Instruct', 'dtype': 'float16', 'max_model_len': 131072, 'gpu_memory_utilization': 0.9, 'enable_prefix_caching': True, 'enable_chunked_prefill': True}
+1790202294.829 (APIServer pid=3820400) INFO 09-23 22:24:54 [arg_utils.py:718] HF_HUB_OFFLINE is True, replace model_id [meta-llama/Llama-3.1-8B-Instruct] to model_path [~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659]
+1790202294.836 (APIServer pid=3820400) INFO 09-23 22:24:54 [model.py:555] Resolved architecture: LlamaForCausalLM
+1790202294.836 (APIServer pid=3820400) WARNING 09-23 22:24:54 [model.py:2018] Casting torch.bfloat16 to torch.float16.
+1790202294.837 (APIServer pid=3820400) INFO 09-23 22:24:54 [model.py:1680] Using max model len 131072
+1790202294.838 (APIServer pid=3820400) INFO 09-23 22:24:54 [vllm.py:840] Asynchronous scheduling is enabled.
+1790202294.838 (APIServer pid=3820400) INFO 09-23 22:24:54 [kernel.py:205] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'])
+1790202300.564 (EngineCore pid=3821397) INFO 09-23 22:25:00 [core.py:109] Initializing a V1 LLM engine (v0.20.1) with config: model='~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659', speculative_config=None, tokenizer='~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.float16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=0, served_model_name=~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::gdn_attention_core', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'size_asserts': False, 'alignment_asserts': False, 'scalar_asserts': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native']), enable_flashinfer_autotune=True, moe_backend='auto')
+1790202301.578 (EngineCore pid=3821397) INFO 09-23 22:25:01 [nixl_utils.py:20] Setting UCX_RCACHE_MAX_UNRELEASED to '1024' to avoid a rare memory leak in UCX when using NIXL.
+1790202301.578 (EngineCore pid=3821397) WARNING 09-23 22:25:01 [nixl_utils.py:34] NIXL is not available
+1790202301.578 (EngineCore pid=3821397) WARNING 09-23 22:25:01 [nixl_utils.py:44] NIXL agent config is not available
+1790202301.788 (EngineCore pid=3821397) INFO 09-23 22:25:01 [parallel_state.py:1402] world_size=1 rank=0 local_rank=0 distributed_init_method=tcp://<ip>:39223 backend=nccl
+1790202302.134 (EngineCore pid=3821397) INFO 09-23 22:25:02 [parallel_state.py:1715] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank N/A, EPLB rank N/A
+1790202302.611 (EngineCore pid=3821397) INFO 09-23 22:25:02 [gpu_model_runner.py:4777] Starting to load model ~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659...
+1790202303.321 (EngineCore pid=3821397) INFO 09-23 22:25:03 [cuda.py:368] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+1790202303.321 (EngineCore pid=3821397) INFO 09-23 22:25:03 [flash_attn.py:646] Using FlashAttention version 2
+1790202303.504 (EngineCore pid=3821397) INFO 09-23 22:25:03 [weight_utils.py:904] Filesystem type for checkpoints: EXT4. Checkpoint size: 14.96 GiB. Available RAM: 977.31 GiB.
+1790202303.504 (EngineCore pid=3821397) INFO 09-23 22:25:03 [weight_utils.py:927] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+1790202303.505 (EngineCore pid=3821397) 
+1790202303.505 Loading safetensors checkpoint shards:   0% Completed | 0/4 [00:00<?, ?it/s]
+1790202304.543 (EngineCore pid=3821397) 
+1790202304.543 Loading safetensors checkpoint shards:  25% Completed | 1/4 [00:01<00:03,  1.04s/it]
+1790202305.748 (EngineCore pid=3821397) 
+1790202305.748 Loading safetensors checkpoint shards:  50% Completed | 2/4 [00:02<00:02,  1.14s/it]
+1790202307.137 (EngineCore pid=3821397) 
+1790202307.137 Loading safetensors checkpoint shards:  75% Completed | 3/4 [00:03<00:01,  1.25s/it]
+1790202307.603 (EngineCore pid=3821397) 
+1790202307.603 Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:04<00:00,  1.06it/s]
+1790202307.603 (EngineCore pid=3821397) 
+1790202307.603 Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:04<00:00,  1.02s/it]
+1790202307.603 (EngineCore pid=3821397) 
+1790202307.660 (EngineCore pid=3821397) INFO 09-23 22:25:07 [default_loader.py:384] Loading weights took 4.16 seconds
+1790202308.189 (EngineCore pid=3821397) INFO 09-23 22:25:08 [gpu_model_runner.py:4879] Model loading took 14.99 GiB memory and 4.890614 seconds
+1790202311.157 (EngineCore pid=3821397) INFO 09-23 22:25:11 [backends.py:1069] Using cache directory: ~/.cache/vllm/torch_compile_cache/edd02998e5/rank_0_0/backbone for vLLM's torch.compile
+1790202311.157 (EngineCore pid=3821397) INFO 09-23 22:25:11 [backends.py:1128] Dynamo bytecode transform time: 2.71 s
+1790202312.293 (EngineCore pid=3821397) INFO 09-23 22:25:12 [backends.py:290] Directly load the compiled graph(s) for compile range (1, 2048) from the cache, took 0.675 s
+1790202312.299 (EngineCore pid=3821397) INFO 09-23 22:25:12 [decorators.py:305] Directly load AOT compilation from path ~/.cache/vllm/torch_compile_cache/torch_aot_compile/934ae7e519389db20459e0eefa97cd90a9b07d3109c24c7f1456b9d7784cbdc6/rank_0_0/model
+1790202312.299 (EngineCore pid=3821397) INFO 09-23 22:25:12 [monitor.py:53] torch.compile took 3.85 s in total
+1790202312.436 (EngineCore pid=3821397) INFO 09-23 22:25:12 [monitor.py:81] Initial profiling/warmup run took 0.14 s
+1790202312.986 (EngineCore pid=3821397) INFO 09-23 22:25:12 [gpu_model_runner.py:5963] Profiling CUDA graph memory: PIECEWISE=51 (largest=512), FULL=35 (largest=256)
+1790202313.898 (EngineCore pid=3821397) INFO 09-23 22:25:13 [gpu_model_runner.py:6042] Estimated CUDA graph memory: 0.53 GiB total
+1790202314.136 (EngineCore pid=3821397) INFO 09-23 22:25:14 [gpu_worker.py:440] Available KV cache memory: 19.39 GiB
+1790202314.136 (EngineCore pid=3821397) INFO 09-23 22:25:14 [gpu_worker.py:455] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9000 is equivalent to --gpu-memory-utilization=0.8867 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9133. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+1790202314.136 (EngineCore pid=3821397) INFO 09-23 22:25:14 [kv_cache_utils.py:1708] GPU KV cache size: 158,864 tokens
+1790202314.136 (EngineCore pid=3821397) INFO 09-23 22:25:14 [kv_cache_utils.py:1709] Maximum concurrency for 131,072 tokens per request: 1.21x
+1790202314.379 (EngineCore pid=3821397) 
+1790202314.492 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   0%|          | 0/51 [00:00<?, ?it/s]
+1790202314.602 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   4%|▍         | 2/51 [00:00<00:02, 17.71it/s]
+1790202314.715 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   8%|▊         | 4/51 [00:00<00:02, 17.96it/s]
+1790202314.827 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  12%|█▏        | 6/51 [00:00<00:02, 17.89it/s]
+1790202314.971 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  16%|█▌        | 8/51 [00:00<00:02, 17.84it/s]
+1790202315.119 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  22%|██▏       | 11/51 [00:00<00:02, 19.10it/s]
+1790202315.255 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  27%|██▋       | 14/51 [00:00<00:01, 19.56it/s]
+1790202315.377 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  33%|███▎      | 17/51 [00:00<00:01, 20.41it/s]
+1790202315.501 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  39%|███▉      | 20/51 [00:00<00:01, 21.64it/s]
+1790202315.622 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  45%|████▌     | 23/51 [00:01<00:01, 22.41it/s]
+1790202315.740 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  51%|█████     | 26/51 [00:01<00:01, 23.12it/s]
+1790202315.856 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  57%|█████▋    | 29/51 [00:01<00:00, 23.83it/s]
+1790202315.959 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  63%|██████▎   | 32/51 [00:01<00:00, 24.38it/s]
+1790202316.062 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  69%|██████▊   | 35/51 [00:01<00:00, 25.67it/s]
+1790202316.162 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  75%|███████▍  | 38/51 [00:01<00:00, 26.65it/s]
+1790202316.271 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  80%|████████  | 41/51 [00:01<00:00, 27.54it/s]
+1790202316.400 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  86%|████████▋ | 44/51 [00:01<00:00, 27.58it/s]
+1790202316.503 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  94%|█████████▍| 48/51 [00:02<00:00, 28.73it/s]
+1790202316.503 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 51/51 [00:02<00:00, 28.82it/s]
+1790202316.503 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 51/51 [00:02<00:00, 24.01it/s]
+1790202316.504 (EngineCore pid=3821397) 
+1790202316.620 Capturing CUDA graphs (decode, FULL):   0%|          | 0/35 [00:00<?, ?it/s]
+1790202316.734 Capturing CUDA graphs (decode, FULL):   9%|▊         | 3/35 [00:00<00:01, 25.75it/s]
+1790202316.849 Capturing CUDA graphs (decode, FULL):  17%|█▋        | 6/35 [00:00<00:01, 26.08it/s]
+1790202316.956 Capturing CUDA graphs (decode, FULL):  26%|██▌       | 9/35 [00:00<00:00, 26.11it/s]
+1790202317.065 Capturing CUDA graphs (decode, FULL):  34%|███▍      | 12/35 [00:00<00:00, 26.80it/s]
+1790202317.171 Capturing CUDA graphs (decode, FULL):  43%|████▎     | 15/35 [00:00<00:00, 27.04it/s]
+1790202317.294 Capturing CUDA graphs (decode, FULL):  51%|█████▏    | 18/35 [00:00<00:00, 27.50it/s]
+1790202317.411 Capturing CUDA graphs (decode, FULL):  63%|██████▎   | 22/35 [00:00<00:00, 29.26it/s]
+1790202317.523 Capturing CUDA graphs (decode, FULL):  74%|███████▍  | 26/35 [00:00<00:00, 30.87it/s]
+1790202317.631 Capturing CUDA graphs (decode, FULL):  86%|████████▌ | 30/35 [00:01<00:00, 32.32it/s]
+1790202317.658 Capturing CUDA graphs (decode, FULL):  97%|█████████▋| 34/35 [00:01<00:00, 33.76it/s]
+1790202317.658 Capturing CUDA graphs (decode, FULL): 100%|██████████| 35/35 [00:01<00:00, 30.33it/s]
+1790202317.905 (EngineCore pid=3821397) INFO 09-23 22:25:17 [gpu_model_runner.py:6133] Graph capturing finished in 4 secs, took 0.48 GiB
+1790202317.905 (EngineCore pid=3821397) INFO 09-23 22:25:17 [gpu_worker.py:599] CUDA graph pool memory: 0.48 GiB (actual), 0.53 GiB (estimated), difference: 0.05 GiB (10.2%).
+1790202317.916 (EngineCore pid=3821397) INFO 09-23 22:25:17 [core.py:299] init engine (profile, create kv cache, warmup model) took 9.73 s (compilation: 3.85 s)
+1790202318.554 (EngineCore pid=3821397) INFO 09-23 22:25:18 [vllm.py:840] Asynchronous scheduling is enabled.
+1790202318.554 (EngineCore pid=3821397) INFO 09-23 22:25:18 [kernel.py:205] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'])
+1790202318.562 (APIServer pid=3820400) INFO 09-23 22:25:18 [api_server.py:598] Supported tasks: ['generate']
+1790202318.562 (APIServer pid=3820400) WARNING 09-23 22:25:18 [__init__.py:14] SECURITY WARNING: Development endpoints are enabled! This should NOT be used in production!
+1790202318.686 (APIServer pid=3820400) WARNING 09-23 22:25:18 [model.py:1437] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 0.6, 'top_p': 0.9}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+1790202319.190 (APIServer pid=3820400) INFO 09-23 22:25:19 [hf.py:314] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+1790202319.219 (APIServer pid=3820400) INFO 09-23 22:25:19 [api_server.py:602] Starting vLLM server on http://127.0.0.1:8002
+1790202319.219 (APIServer pid=3820400) INFO 09-23 22:25:19 [launcher.py:37] Available routes are:
+1790202319.219 (APIServer pid=3820400) INFO 09-23 22:25:19 [launcher.py:46] Route: /openapi.json, Methods: HEAD, GET
+1790202319.219 (APIServer pid=3820400) INFO 09-23 22:25:19 [launcher.py:46] Route: /docs, Methods: HEAD, GET
+1790202319.219 (APIServer pid=3820400) INFO 09-23 22:25:19 [launcher.py:46] Route: /docs/oauth2-redirect, Methods: HEAD, GET
+1790202319.219 (APIServer pid=3820400) INFO 09-23 22:25:19 [launcher.py:46] Route: /redoc, Methods: HEAD, GET
+1790202319.219 (APIServer pid=3820400) INFO 09-23 22:25:19 [launcher.py:46] Route: /metrics, Methods: GET
+1790202319.238 (APIServer pid=3820400) INFO:     Started server process [3820400]
+1790202319.238 (APIServer pid=3820400) INFO:     Waiting for application startup.
+1790202319.557 (APIServer pid=3820400) INFO:     Application startup complete.
+1790202319.958 (APIServer pid=3820400) uv is set
+1790202324.278 (APIServer pid=3820400) INFO 09-23 22:25:24 [api_router.py:39] Resetting prefix cache...
+1790202324.282 (EngineCore pid=3821397) INFO 09-23 22:25:24 [block_pool.py:471] Successfully reset prefix cache
+1790202329.557 (APIServer pid=3820400) INFO 09-23 22:25:29 [loggers.py:271] Engine 000: Avg prompt throughput: 12.1 tokens/s, Avg generation throughput: 1.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790202339.566 (APIServer pid=3820400) INFO 09-23 22:25:39 [loggers.py:271] Engine 000: Avg prompt throughput: 1637.0 tokens/s, Avg generation throughput: 3703.9 tokens/s, Running: 128 reqs, Waiting: 0 reqs, GPU KV cache usage: 34.3%, Prefix cache hit rate: 0.0%
+1790202349.574 (APIServer pid=3820400) INFO 09-23 22:25:49 [loggers.py:271] Engine 000: Avg prompt throughput: 1637.0 tokens/s, Avg generation throughput: 4439.9 tokens/s, Running: 128 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.8%, Prefix cache hit rate: 0.0%
+1790202359.577 (APIServer pid=3820400) INFO 09-23 22:25:59 [loggers.py:271] Engine 000: Avg prompt throughput: 89.6 tokens/s, Avg generation throughput: 4961.9 tokens/s, Running: 21 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.8%, Prefix cache hit rate: 0.0%
+1790202369.586 (APIServer pid=3820400) INFO 09-23 22:26:09 [loggers.py:271] Engine 000: Avg prompt throughput: 1547.4 tokens/s, Avg generation throughput: 4804.4 tokens/s, Running: 128 reqs, Waiting: 0 reqs, GPU KV cache usage: 41.3%, Prefix cache hit rate: 0.0%
+1790202379.590 (APIServer pid=3820400) INFO 09-23 22:26:19 [loggers.py:271] Engine 000: Avg prompt throughput: 1637.7 tokens/s, Avg generation throughput: 4474.5 tokens/s, Running: 128 reqs, Waiting: 0 reqs, GPU KV cache usage: 28.5%, Prefix cache hit rate: 0.0%
+1790202389.591 (APIServer pid=3820400) INFO 09-23 22:26:29 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 3814.9 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790202398.637 (APIServer pid=3820400) INFO 09-23 22:26:38 [api_router.py:39] Resetting prefix cache...
+1790202398.640 (EngineCore pid=3821397) INFO 09-23 22:26:38 [block_pool.py:471] Successfully reset prefix cache
+1790202399.592 (APIServer pid=3820400) INFO 09-23 22:26:39 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790202409.592 (APIServer pid=3820400) INFO 09-23 22:26:49 [loggers.py:271] Engine 000: Avg prompt throughput: 819.2 tokens/s, Avg generation throughput: 0.4 tokens/s, Running: 2 reqs, Waiting: 2 reqs, GPU KV cache usage: 10.3%, Prefix cache hit rate: 0.0%
+1790202419.592 (APIServer pid=3820400) INFO 09-23 22:26:59 [loggers.py:271] Engine 000: Avg prompt throughput: 9829.8 tokens/s, Avg generation throughput: 18.8 tokens/s, Running: 3 reqs, Waiting: 1 reqs, GPU KV cache usage: 12.9%, Prefix cache hit rate: 0.0%
+1790202429.593 (APIServer pid=3820400) INFO 09-23 22:27:09 [loggers.py:271] Engine 000: Avg prompt throughput: 9010.6 tokens/s, Avg generation throughput: 18.8 tokens/s, Running: 2 reqs, Waiting: 1 reqs, GPU KV cache usage: 9.0%, Prefix cache hit rate: 0.0%
+1790202439.594 (APIServer pid=3820400) INFO 09-23 22:27:19 [loggers.py:271] Engine 000: Avg prompt throughput: 9829.5 tokens/s, Avg generation throughput: 18.6 tokens/s, Running: 3 reqs, Waiting: 0 reqs, GPU KV cache usage: 11.6%, Prefix cache hit rate: 0.0%
+1790202449.594 (APIServer pid=3820400) INFO 09-23 22:27:29 [loggers.py:271] Engine 000: Avg prompt throughput: 9011.6 tokens/s, Avg generation throughput: 15.6 tokens/s, Running: 4 reqs, Waiting: 0 reqs, GPU KV cache usage: 19.4%, Prefix cache hit rate: 0.0%
+1790202459.594 (APIServer pid=3820400) INFO 09-23 22:27:39 [loggers.py:271] Engine 000: Avg prompt throughput: 9010.7 tokens/s, Avg generation throughput: 18.4 tokens/s, Running: 3 reqs, Waiting: 1 reqs, GPU KV cache usage: 15.5%, Prefix cache hit rate: 0.0%
+1790202469.595 (APIServer pid=3820400) INFO 09-23 22:27:49 [loggers.py:271] Engine 000: Avg prompt throughput: 4914.7 tokens/s, Avg generation throughput: 11.8 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790202474.656 (APIServer pid=3820400) INFO 09-23 22:27:54 [api_router.py:39] Resetting prefix cache...
+1790202474.660 (EngineCore pid=3821397) INFO 09-23 22:27:54 [block_pool.py:471] Successfully reset prefix cache
+1790202479.596 (APIServer pid=3820400) INFO 09-23 22:27:59 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790202489.601 (APIServer pid=3820400) INFO 09-23 22:28:09 [loggers.py:271] Engine 000: Avg prompt throughput: 6550.4 tokens/s, Avg generation throughput: 311.2 tokens/s, Running: 64 reqs, Waiting: 0 reqs, GPU KV cache usage: 43.5%, Prefix cache hit rate: 0.0%
+1790202499.606 (APIServer pid=3820400) INFO 09-23 22:28:19 [loggers.py:271] Engine 000: Avg prompt throughput: 5322.2 tokens/s, Avg generation throughput: 1399.6 tokens/s, Running: 55 reqs, Waiting: 5 reqs, GPU KV cache usage: 35.9%, Prefix cache hit rate: 0.0%
+1790202509.607 (APIServer pid=3820400) INFO 09-23 22:28:29 [loggers.py:271] Engine 000: Avg prompt throughput: 4607.5 tokens/s, Avg generation throughput: 1581.7 tokens/s, Running: 58 reqs, Waiting: 3 reqs, GPU KV cache usage: 40.7%, Prefix cache hit rate: 0.0%
+1790202519.607 (APIServer pid=3820400) INFO 09-23 22:28:39 [loggers.py:271] Engine 000: Avg prompt throughput: 4505.7 tokens/s, Avg generation throughput: 1582.2 tokens/s, Running: 57 reqs, Waiting: 3 reqs, GPU KV cache usage: 43.1%, Prefix cache hit rate: 0.0%
+1790202529.613 (APIServer pid=3820400) INFO 09-23 22:28:49 [loggers.py:271] Engine 000: Avg prompt throughput: 5219.0 tokens/s, Avg generation throughput: 1522.8 tokens/s, Running: 63 reqs, Waiting: 0 reqs, GPU KV cache usage: 50.1%, Prefix cache hit rate: 0.0%
+1790202539.614 (APIServer pid=3820400) INFO 09-23 22:28:59 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 154.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790202541.047 (EngineCore pid=3821397) INFO 09-23 22:29:01 [core.py:1238] Shutdown initiated (timeout=0)
+1790202541.047 (EngineCore pid=3821397) INFO 09-23 22:29:01 [core.py:1261] Shutdown complete
+1790202541.140 (APIServer pid=3820400) INFO:     Shutting down
+1790202541.241 (APIServer pid=3820400) INFO:     Waiting for application shutdown.
+1790202541.241 (APIServer pid=3820400) INFO:     Application shutdown complete.
+1790202541.242 (APIServer pid=3820400) INFO:     Finished server process [3820400]
+1790202542.073 [rank0]:[W923 22:29:02.536461800 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())

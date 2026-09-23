@@ -21,3 +21,52 @@ during the run window, sampled about every 20 s.
 | R6-20260923T214636Z | R6 | 0 | complete | 6.0 min | Warm hits = (n − 1) × prefix at every point; cold 0. TTFT p50 at a 32k prefix + 256: warm 278 ms, cold 4,936 ms. With 8 in flight, TTFT p50 is 341 ms with shared 4k prefixes and 1,389 ms with distinct ones. |
 | R5-20260923T215247Z | R5 | 0 | complete | 20.9 min | 15 req/s as defined (no override; see R3). 9,000/9,000 completed: a 600 s hold, then about 510 s to drain. 425 preemptions. TTFT p50 232 s, which is queueing. Power cap 98% of samples. |
 | R7-20260923T221344Z-process-restart | R7, process restart only | 0 | complete | 4.6 min | One prime start, then 3 timed starts. Trials 1 and 2: weights loaded 17.7–17.9 s, `/health` 200 at 28.9–29.1 s, first token 0.08 s later. Trial 3 stalled 157 s in c10d init after `The hostname of the client socket cannot be retrieved. err=-3` (a transient name-resolution failure, not cold-start work). The median excludes it. Host reboot and replacement host are not run: they need `sudo` (below). |
+| R8-20260923T221822Z | R8 | 0, 1, both | complete | 16.9 min | GPU 0 alone, GPU 1 alone, then both. Output throughput with both loaded is within 0.2% of solo on every load, and TPOT p50 within 1.5%. TTFT p50 moves by up to 20%: the closed-loop first wave starts synchronized, so this is not interference. Replicas scale linearly (03 §4). |
+
+## Left for the author: R7 host reboot and replacement host
+
+These two conditions need `sudo` to drop the page cache, so B2 didn't run them.
+`calibration.measured.json` carries the provisional `hostReboot` and `replacementHost` values
+until they are measured. The app uses `replacementHost` (Theme 3 Q4).
+
+Run the full R7 from a terminal. It repeats process restart, which takes about 2 minutes, then
+pauses before each privileged step. The GPUs must be as free as they were for B2; the idle
+ComfyUI process is fine.
+
+```bash
+cd benchmarks
+uv run harness run R7 --gpu-approved --allow-busy-gpus
+```
+
+At each pause, run the printed commands in a second terminal, then type `done`. `<ts>` is the
+run's timestamp, which the harness prints.
+
+```bash
+# before host_reboot-1, -2 and -3 (three times):
+sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+
+# before replacement_host-1:
+sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+mv ~/.cache/vllm/torch_compile_cache ~/.cache/vllm/torch_compile_cache.orig-R7-<ts>
+
+# before replacement_host-2 (then -3 with 2 in place of 1):
+sync; echo 3 | sudo tee /proc/sys/vm/drop_caches
+mv ~/.cache/vllm/torch_compile_cache ~/.cache/vllm/torch_compile_cache.replacement_host-1-R7-<ts>
+
+# after the last start, restore the original compile cache:
+mv ~/.cache/vllm/torch_compile_cache ~/.cache/vllm/torch_compile_cache.replacement_host-3-R7-<ts>
+mv ~/.cache/vllm/torch_compile_cache.orig-R7-<ts> ~/.cache/vllm/torch_compile_cache
+rm -rf ~/.cache/vllm/torch_compile_cache.replacement_host-{1,2,3}-R7-<ts>   # optional
+```
+
+Then rerun the derivation and commit the run. `scripts/derive.py` picks the newest complete R7
+and replaces the provisional values for every condition that run measured.
+
+```bash
+uv run python scripts/derive.py
+git add benchmarks/raw/R7-<ts> benchmarks/derived/calibration.measured.json benchmarks/derived/report.md
+```
+
+Expect about 20 minutes. Replacement-host starts recompile (about 15 s of torch.compile on the
+first R0 start). R0's smoke run also suggests a cold compile leaves about 2.6% less KV pool:
+154,752 tokens instead of 158,864. The replacement-host starts will confirm it.
