@@ -5,8 +5,9 @@ import { fixtureScenarios } from '../fixtures/scenarios.ts';
 import type { Scenario } from './schema.ts';
 import { scenario as longPrompt } from './tab1-long-prompt/index.ts';
 import { scenario as knee } from './tab2-knee/index.ts';
+import { scenario as kvExhaustion } from './tab3-kv/index.ts';
 
-const written: readonly Scenario[] = [longPrompt, knee];
+const written: readonly Scenario[] = [longPrompt, knee, kvExhaustion];
 
 export function scenarios(): Scenario[] {
   const byId = new Map(fixtureScenarios().map((s) => [s.id, s]));
