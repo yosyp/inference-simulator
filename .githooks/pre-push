@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Runs the full local verification (lint, typecheck, full test suite, build) before a push, so CI
+# can run only the fast test tier. Skip once with `git push --no-verify`.
+set -e
+echo "pre-push: pnpm verify (full suite)…"
+pnpm verify

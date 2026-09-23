@@ -21,7 +21,8 @@
     "e2e": "vite build && playwright test",
     "sim": "tsx scripts/sim.ts",
     "perf": "tsx scripts/perf.ts",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "d3-array": "^3.2.4",
