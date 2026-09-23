@@ -4,7 +4,7 @@
 
 import { interpolateNumberArray } from 'd3-interpolate';
 import { scaleLinear, scaleLog } from 'd3-scale';
-import { useId, type PointerEvent, type ReactNode } from 'react';
+import { useId, useMemo, type PointerEvent, type ReactNode } from 'react';
 import type { SimMs } from '../engine/time.ts';
 import type { ForkMarker as Fork } from '../playback/types.ts';
 import { ChartHeader } from './ChartHeader.tsx';
@@ -84,6 +84,19 @@ export function LineChart({
       ? scaleLog().domain(panel.yDomain).range([plotHeight, 0]).clamp(true)
       : scaleLinear().domain(panel.yDomain).range([plotHeight, 0]).clamp(true);
   const pixelMs = (xDomain[1] - xDomain[0]) / Math.max(1, plotWidth);
+  // Path strings only change with the data, the x domain, the plot size, or the collapse morph.
+  // The playhead and cursor re-render the chart ~10×/s, so rebuilding them there was the stack's
+  // main cost at low speeds (P5).
+  const [x0, x1] = xDomain;
+  const paths = useMemo(
+    () =>
+      panel.lines.map((l) =>
+        l.hidden ? '' : linePath(l.t, flattenToward(l.v, morph), l.stepMs, x, y),
+      ),
+    // x and y are rebuilt every render from exactly these inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [panel, morph, x0, x1, plotWidth, plotHeight],
+  );
   const entries = legendEntries(panel, morph > 0 ? null : cursorMs, pixelMs);
   const marked = (ms: number) => inside(ms, markerRange) && inside(ms, xDomain);
 
@@ -157,13 +170,12 @@ export function LineChart({
             )}
           </g>
           <g clipPath={`url(#${clipId})`} opacity={dataOpacity}>
-            {panel.lines
-              .filter((l) => !l.hidden)
-              .map((l) => (
+            {panel.lines.map((l, i) =>
+              l.hidden ? null : (
                 <path
                   key={l.id}
                   data-series={l.id}
-                  d={linePath(l.t, flattenToward(l.v, morph), l.stepMs, x, y)}
+                  d={paths[i]}
                   fill="none"
                   stroke={l.style.color}
                   strokeWidth={l.style.widthPx}
@@ -171,7 +183,8 @@ export function LineChart({
                   strokeLinejoin="round"
                   strokeLinecap="round"
                 />
-              ))}
+              ),
+            )}
             {panel.points.map((pts) => {
               const v = flattenToward(pts.v, morph);
               return (
