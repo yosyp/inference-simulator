@@ -218,14 +218,14 @@ export const scenario: Scenario = {
   ],
   copy: {
     whatToWatch: [
-      'Each replica holds its own copy of the model and its own KV cache. A follow-up turn is fast only on the replica that still holds its conversation. On the other replica, the whole conversation is prefilled again.',
+      'Each replica holds its own copy of the model and its own KV cache. A follow-up turn is fast only on the replica that still holds its conversation. On a replica that never served it, the whole conversation is prefilled again.',
       'Until Wednesday 10:30 the router uses session affinity, so each conversation stays on one replica. At 10:30 it switches to round-robin, which sends each request to the next replica in turn.',
       'Watch the tracked analyst. After the switch, about half of their turns land on the other replica and are marked as moved. Those turns take several hundred milliseconds to first token instead of tens. A turn that goes back to a replica it used earlier finds part of its history there and recomputes only the rest.',
-      'Round-robin evens out the two replicas on the load chart. Least outstanding evens them out further, and its returning turns are just as slow. Affinity leaves one replica busier than the other; that is the price of keeping histories warm.',
+      'On the charts, fleet TTFT rises and the two replicas’ load lines move closer together. Least outstanding keeps them closer still, and its returning turns are just as slow. Affinity lets one replica run busier than the other at times; that is the price of keeping histories warm.',
     ],
     tryThis: [
       'Press Switch to session affinity and follow the tracked analyst: their next turns stay on one replica. Then compare the two replicas on the load chart.',
-      'In Parameters, set Turns per conversation to 1. Conversations that start after the change are single requests with no history, and round-robin and affinity give about the same TTFT.',
+      'In Parameters, set Turns per conversation to 1. Conversations that start after the change are single requests with no history, and switching between round-robin and affinity barely changes TTFT.',
       'Under session affinity, set Think time to 3 minutes. Histories start to be evicted before analysts return, and follow-ups slow down even though they stay on their replica.',
     ],
   },
