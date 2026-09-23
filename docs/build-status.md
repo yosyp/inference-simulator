@@ -39,7 +39,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | I3 Deploy workflow | merged | main | deploy.yml calls ci.yml (workflow_call); build job has no id-token; deploy never cancelled; ci concurrency split per workflow |
 | I4 CSP smoke test | merged | main | `scripts/serve-prod.ts` + `e2e/`; optional steps marked IF PRESENT for X1 to harden; negative checks (inline style, blob worker, fetch) all fail as expected |
 | I5 First deploy | todo | | Author runs |
-| X1b Playback fixes and e2e | running | | Focus on in-day seeks; keep the playhead day's checkpoints; one clock; hard e2e; P5 trace |
+| X1b Playback fixes and e2e | merged | main | `focus.prefetch` (protocol): lookahead no longer thins the playhead day's checkpoints; late-day fork on Server B 187 ms (was 1,567 ms). One clock (timeline). e2e steps are hard requirements; drawer step uses each tab's first control. P5 deferred. Scrubbing sends one focus per pointer move (not throttled). |
 | X1 Vertical slice | partial | main | Done: all components mounted; the app runs the real engine in a Web Worker; verify and e2e (real worker, prod CSP) pass. Left: scenario registry (after C2); keep one of the two clocks; harden e2e IF PRESENT steps; U2 should send `focus` on in-day seeks and not thin the playhead day's checkpoints on lookahead (else a late-day fork can miss P2); measure P5 in Chrome. |
 | X2–X5 | todo | | |
 

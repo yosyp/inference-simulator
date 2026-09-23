@@ -59,8 +59,8 @@ function firstVictim(h: Active, slot: DaySlot): boolean {
 
 /**
  * Keeps non-focus checkpoints within the budget. The victim is the day farthest from the focus
- * day, later days first on ties (the day before the focus may still hold the playhead after a
- * lookahead focus), so the days next to it keep theirs longest.
+ * day, later days first on ties, so the days next to it keep theirs longest. (A prefetch focus
+ * no longer moves the focus day, so the playhead's day is always the focus day.)
  */
 export function enforceBudget(h: Active): void {
   const r = h.run;

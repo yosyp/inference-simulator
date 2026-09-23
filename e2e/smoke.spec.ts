@@ -11,7 +11,6 @@ import { expectCleanRun, expectDocumentHeaders, installGuards } from './guards.t
 
 const TAB_COUNT = 6;
 // The drawer parameter changed on every tab. If a tab's drawer drops it, name another here.
-const DRAWER_PARAMETER = 'Load';
 // Fast enough that the timeline's minute readout moves within a second or two of Play.
 const PLAY_SPEED = '100×';
 // Short wall-clock pauses so the worker computes, the canvas draws, and any late violation lands.
@@ -88,9 +87,20 @@ async function exerciseToolbar(page: Page): Promise<void> {
   const panelId = await drawerButton.getAttribute('aria-controls');
   const panel = page.locator(`[id="${panelId}"]`);
   await expect(panel).toBeVisible();
-  const slider = panel.getByRole('slider', { name: DRAWER_PARAMETER, exact: true });
-  await slider.focus();
-  await slider.press('ArrowRight');
+  // Each tab has its own parameters: nudge the first slider, or pick another option in the first
+  // select if the tab has no slider.
+  const slider = panel.getByRole('slider').first();
+  if ((await panel.getByRole('slider').count()) > 0) {
+    await slider.focus();
+    await slider.press('ArrowRight');
+  } else {
+    const select = panel.getByRole('combobox').first();
+    const options = await select
+      .locator('option')
+      .evaluateAll((os) => os.map((o) => (o as { value: string }).value));
+    const current = await select.inputValue();
+    await select.selectOption(options.find((v) => v !== current)!);
+  }
   await expect(forks).toHaveCount(1);
   await drawerButton.click();
   await expect(drawerButton).toHaveAttribute('aria-expanded', 'false');
