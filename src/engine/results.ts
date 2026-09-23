@@ -166,7 +166,9 @@ export interface ReplicaEvent {
 
 /**
  * Everything a DayRun produced in [fromMs, toMs). Scalar and histogram blocks hold only complete
- * buckets, so their ranges may lag toMs by less than one bucket.
+ * buckets, so their ranges may lag toMs by less than one bucket. Quiet buckets outside the day's
+ * active window are left out (see engine/metrics/quiet.ts), so blocks may also start later and end
+ * earlier than the chunk; the results store reads the missing buckets as quiet, not uncomputed.
  */
 export interface ResultChunk {
   day: DayIndex;
