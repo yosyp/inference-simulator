@@ -1,0 +1,34 @@
+(APIServer pid=2412345) INFO 09-23 05:10:09 [__init__.py:247] Automatically detected platform cuda.
+(APIServer pid=2412345) INFO 09-23 05:10:11 [api_server.py:1914] vLLM API server version 0.20.1
+(APIServer pid=2412345) INFO 09-23 05:10:11 [utils.py:233] non-default args: {'model_tag': 'meta-llama/Llama-3.1-8B-Instruct', 'host': '127.0.0.1', 'port': 8001, 'disable_uvicorn_access_log': True, 'model': 'meta-llama/Llama-3.1-8B-Instruct', 'dtype': 'float16', 'seed': 0, 'max_model_len': 131072, 'enable_prefix_caching': True, 'enable_chunked_prefill': True}
+(APIServer pid=2412345) INFO 09-23 05:10:15 [model.py:1680] Using max model len 131072
+(APIServer pid=2412345) INFO 09-23 05:10:16 [scheduler.py:240] Chunked prefill is enabled with max_num_batched_tokens=2048.
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:20 [core.py:110] Initializing a V1 LLM engine (v0.20.1) with config: model='meta-llama/Llama-3.1-8B-Instruct', speculative_config=None, tokenizer='meta-llama/Llama-3.1-8B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, trust_remote_code=False, dtype=torch.float16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, seed=0, served_model_name=meta-llama/Llama-3.1-8B-Instruct, enable_prefix_caching=True, enable_chunked_prefill=True, compilation_config={'mode': 3, 'cache_dir': '/home/alice/.cache/vllm/torch_compile_cache/3f2a9c1d7e'}
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:21 [parallel_state.py:1359] world_size=1 rank=0 local_rank=0 distributed_init_method=tcp://10.20.30.40:41235 backend=nccl
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:22 [gpu_model_runner.py:4778] Starting to load model meta-llama/Llama-3.1-8B-Instruct...
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:23 [cuda.py:369] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+Loading safetensors checkpoint shards:   0% Completed | 0/4 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards:  50% Completed | 2/4 [00:07<00:07,  3.61s/it]
+Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:13<00:00,  3.28s/it]
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:36 [default_loader.py:385] Loading weights took 13.27 seconds
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:37 [gpu_model_runner.py:4880] Model loading took 14.9905 GiB memory and 14.312187 seconds
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:45 [backends.py:1070] Using cache directory: /home/alice/.cache/vllm/torch_compile_cache/3f2a9c1d7e/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:10:45 [backends.py:1129] Dynamo bytecode transform time: 7.52 s
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:08 [backends.py:392] Compiling a graph for compile range (1, 2048) takes 22.11 s
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:12 [monitor.py:53] torch.compile took 31.40 s in total
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:15 [gpu_worker.py:441] Available KV cache memory: 17.54 GiB
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:15 [kv_cache_utils.py:1708] GPU KV cache size: 143,696 tokens
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:15 [kv_cache_utils.py:1710] Maximum concurrency for 131,072 tokens per request: 1.10x
+Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  52%|█████▏    | 35/67 [00:03<00:02, 11.90it/s]
+Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 67/67 [00:05<00:00, 12.80it/s]
+Capturing CUDA graphs (decode, FULL): 100%|██████████| 35/35 [00:02<00:00, 14.02it/s]
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:24 [gpu_model_runner.py:6134] Graph capturing finished in 9 secs, took 0.61 GiB
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:24 [core.py:295] init engine (profile, create kv cache, warmup model) took 47.83 s (compilation: 31.40 s)
+(EngineCore_DP0 pid=2412400) INFO 09-23 05:11:25 [loggers.py:286] Engine 000: vllm cache_config_info with initialization after num_gpu_blocks is: 8981
+(APIServer pid=2412345) INFO 09-23 05:11:26 [api_server.py:598] Supported tasks: ['generate']
+(APIServer pid=2412345) INFO 09-23 05:11:26 [api_server.py:602] Starting vLLM server on http://127.0.0.1:8001
+(APIServer pid=2412345) INFO 09-23 05:11:26 [launcher.py:37] Available routes are:
+(APIServer pid=2412345) INFO:     Started server process [2412345]
+(APIServer pid=2412345) INFO:     Waiting for application startup.
+(APIServer pid=2412345) INFO:     Application startup complete.
+(APIServer pid=2412345) INFO 09-23 05:11:40 [loggers.py:224] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 1.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%

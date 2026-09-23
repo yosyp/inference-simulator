@@ -1,0 +1,39 @@
+# R7 · Cold start (03 §6, Q4). Recovery durations under three cold states. Each start is
+# timed from process spawn to: weights loaded, engine ready (init done, /health 200), and
+# the first request's first token.
+#
+# The harness never runs privileged or cache-moving commands. Before each host_reboot and
+# replacement_host trial it PRINTS the commands (drop_caches with sudo; mv of the vLLM
+# compile cache under ~/.cache/vllm), then waits until the author confirms by touching the
+# file it names, or by typing `done` in an interactive terminal. At the end it prints the
+# commands that move the original compile cache back.
+# Order matters: process_restart first, while caches are warm, after one untimed "prime" start.
+# Three trials per condition: cold loads vary with the disk, and three shows the spread.
+# CUDA graph capture reruns on every start regardless (03 §6).
+
+id = "R7"
+title = "Cold start"
+purpose = "Startup phase durations for process restart, host reboot (page cache dropped) and replacement host (page cache dropped, compile cache moved aside)"
+feeds = "Recovery constants: calibration coldStartMs (the app uses replacementHost)"
+kind = "cold_start"
+gpus = [0]
+trials = 3
+
+[first_request]
+input_len = 128
+output_len = 16
+
+[[conditions]]
+name = "process_restart"
+privileged = []
+note = "caches warm: weights in the page cache, compile cache on disk"
+
+[[conditions]]
+name = "host_reboot"
+privileged = ["drop_caches"]
+note = "page cache dropped before each start; the compile cache stays (it survives a reboot on disk)"
+
+[[conditions]]
+name = "replacement_host"
+privileged = ["drop_caches", "compile_cache_aside"]
+note = "page cache dropped and compile cache moved aside: a new host with the weights pre-staged (03 §4)"

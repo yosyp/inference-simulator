@@ -1,0 +1,97 @@
+# R2 · Decode calibration (03 §6, open item 1). TPOT -> eta_b and t_o.
+#
+# Three views of the same decode step (02 §6: step = t_o + max(compute, memory)):
+# - b1: batch 1 at short context. The step reads the 16 GB of weights and little KV, so it
+#   pins eta_b, and t_o is what is left over.
+# - conc: TPOT vs batch size at short context (128 in / 256 out). Memory time barely moves
+#   while compute grows with batch, so the curve bends where decode turns compute-bound. It
+#   runs up to 256 = max_num_seqs; 256 x 384 tokens = 98k stays under the ~140k pool.
+#   Two waves per point (n = 2c), so most steps run at exactly batch c; ITLs in the detailed
+#   results let B3 drop the ramp at each end.
+#   Uses the `unique` dataset: with hundreds of prompts, two `random` prompts can start on
+#   the same token id and be identical (about n^2/256k collisions per point, ~1 at n = 512),
+#   which would hit the prefix cache and trip the zero-hit check.
+# - ctx_b1 / ctx_b8: TPOT vs context at fixed batch. KV bytes read per step grow with
+#   context while weight bytes stay fixed: the K3 lesson (+6% at 8k, +26% at 32k, about 2x
+#   at 120k) and a second handle on eta_b. At batch 8 the top point is 12k (8 x 12.5k =
+#   100k tokens, under the pool).
+
+id = "R2"
+title = "Decode calibration"
+purpose = "Batch-1 TPOT at short context, TPOT vs concurrency, and TPOT vs context at fixed concurrency, to fit eta_b and t_o"
+feeds = "Cost model: bandwidthEfficiency (eta_b), stepOverheadMs (t_o)"
+kind = "sweep"
+gpus = [0]
+prefix_cache_must_be_zero = true   # 03 §5
+
+[warmup]
+num_prompts = 16
+input_len = 512
+output_len = 128
+max_concurrency = 8
+
+[defaults]
+dataset = "random"
+request_rate = "inf"
+cooldown_s = 3
+
+[[sweeps]]
+name = "b1"
+note = "batch-1 TPOT at short context"
+defaults = { input_len = 128, output_len = 512, max_concurrency = 1 }
+points = [
+  { id = "b1_in128_out512", num_prompts = 16 },
+]
+
+[[sweeps]]
+name = "conc"
+note = "TPOT vs batch size at 128 in / 256 out; n = 2 x concurrency"
+defaults = { dataset = "unique", input_len = 128, output_len = 256 }
+points = [
+  { id = "c001", max_concurrency = 1,   num_prompts = 16 },
+  { id = "c002", max_concurrency = 2,   num_prompts = 16 },
+  { id = "c004", max_concurrency = 4,   num_prompts = 16 },
+  { id = "c008", max_concurrency = 8,   num_prompts = 16 },
+  { id = "c016", max_concurrency = 16,  num_prompts = 32 },
+  { id = "c024", max_concurrency = 24,  num_prompts = 48 },
+  { id = "c032", max_concurrency = 32,  num_prompts = 64 },
+  { id = "c048", max_concurrency = 48,  num_prompts = 96 },
+  { id = "c064", max_concurrency = 64,  num_prompts = 128 },
+  { id = "c096", max_concurrency = 96,  num_prompts = 192 },
+  { id = "c128", max_concurrency = 128, num_prompts = 256 },
+  { id = "c160", max_concurrency = 160, num_prompts = 320 },
+  { id = "c192", max_concurrency = 192, num_prompts = 384 },
+  { id = "c224", max_concurrency = 224, num_prompts = 448 },
+  { id = "c256", max_concurrency = 256, num_prompts = 512 },
+]
+
+[[sweeps]]
+name = "ctx_b1"
+note = "TPOT vs context at batch 1, 256 output tokens"
+defaults = { output_len = 256, max_concurrency = 1 }
+points = [
+  { id = "ctx_b1_in512",    input_len = 512,    num_prompts = 8 },
+  { id = "ctx_b1_in1024",   input_len = 1024,   num_prompts = 8 },
+  { id = "ctx_b1_in2048",   input_len = 2048,   num_prompts = 8 },
+  { id = "ctx_b1_in4096",   input_len = 4096,   num_prompts = 8 },
+  { id = "ctx_b1_in8192",   input_len = 8192,   num_prompts = 8 },
+  { id = "ctx_b1_in16384",  input_len = 16384,  num_prompts = 6 },
+  { id = "ctx_b1_in32768",  input_len = 32768,  num_prompts = 5 },
+  { id = "ctx_b1_in49152",  input_len = 49152,  num_prompts = 4 },
+  { id = "ctx_b1_in65536",  input_len = 65536,  num_prompts = 3 },
+  { id = "ctx_b1_in98304",  input_len = 98304,  num_prompts = 3 },
+  { id = "ctx_b1_in120000", input_len = 120000, num_prompts = 3 },
+]
+
+[[sweeps]]
+name = "ctx_b8"
+note = "TPOT vs context at batch 8, 256 output tokens; two waves"
+defaults = { output_len = 256, max_concurrency = 8 }
+points = [
+  { id = "ctx_b8_in512",   input_len = 512,   num_prompts = 16 },
+  { id = "ctx_b8_in1024",  input_len = 1024,  num_prompts = 16 },
+  { id = "ctx_b8_in2048",  input_len = 2048,  num_prompts = 16 },
+  { id = "ctx_b8_in4096",  input_len = 4096,  num_prompts = 16 },
+  { id = "ctx_b8_in8192",  input_len = 8192,  num_prompts = 16 },
+  { id = "ctx_b8_in12288", input_len = 12288, num_prompts = 16 },
+]

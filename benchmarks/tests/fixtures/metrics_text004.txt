@@ -1,0 +1,44 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 18233.0
+# HELP vllm:num_requests_running Number of requests in model execution batches.
+# TYPE vllm:num_requests_running gauge
+vllm:num_requests_running{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 3.0
+# HELP vllm:num_requests_waiting Number of requests waiting to be processed.
+# TYPE vllm:num_requests_waiting gauge
+vllm:num_requests_waiting{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 0.0
+# HELP vllm:kv_cache_usage_perc KV-cache usage. 1 means 100 percent usage.
+# TYPE vllm:kv_cache_usage_perc gauge
+vllm:kv_cache_usage_perc{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 0.4213
+# HELP vllm:prefix_cache_queries_total Prefix cache queries, in terms of number of queried tokens.
+# TYPE vllm:prefix_cache_queries_total counter
+vllm:prefix_cache_queries_total{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 245760.0
+# HELP vllm:prefix_cache_queries_created Prefix cache queries, in terms of number of queried tokens.
+# TYPE vllm:prefix_cache_queries_created gauge
+vllm:prefix_cache_queries_created{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 1.7586e+09
+# HELP vllm:prefix_cache_hits_total Prefix cache hits, in terms of number of cached tokens.
+# TYPE vllm:prefix_cache_hits_total counter
+vllm:prefix_cache_hits_total{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 0.0
+# HELP vllm:prefix_cache_hits_created Prefix cache hits, in terms of number of cached tokens.
+# TYPE vllm:prefix_cache_hits_created gauge
+vllm:prefix_cache_hits_created{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 1.7586e+09
+# HELP vllm:num_preemptions_total Cumulative number of preemption from the engine.
+# TYPE vllm:num_preemptions_total counter
+vllm:num_preemptions_total{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 7.0
+# HELP vllm:iteration_tokens_total Histogram of number of tokens per engine_step.
+# TYPE vllm:iteration_tokens_total histogram
+vllm:iteration_tokens_total_bucket{engine="0",le="1.0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 5.0
+vllm:iteration_tokens_total_bucket{engine="0",le="8.0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 30.0
+vllm:iteration_tokens_total_bucket{engine="0",le="2048.0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 41.0
+vllm:iteration_tokens_total_bucket{engine="0",le="+Inf",model_name="meta-llama/Llama-3.1-8B-Instruct"} 42.0
+vllm:iteration_tokens_total_count{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 42.0
+vllm:iteration_tokens_total_sum{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 12345.0
+# HELP vllm:e2e_request_latency_seconds Histogram of e2e request latency in seconds.
+# TYPE vllm:e2e_request_latency_seconds histogram
+vllm:e2e_request_latency_seconds_bucket{engine="0",le="0.3",model_name="meta-llama/Llama-3.1-8B-Instruct"} 1.0
+vllm:e2e_request_latency_seconds_bucket{engine="0",le="+Inf",model_name="meta-llama/Llama-3.1-8B-Instruct"} 4.0
+vllm:e2e_request_latency_seconds_count{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 4.0
+vllm:e2e_request_latency_seconds_sum{engine="0",model_name="meta-llama/Llama-3.1-8B-Instruct"} 9.5
+# HELP vllm:cache_config_info Information of the LLMEngine CacheConfig
+# TYPE vllm:cache_config_info gauge
+vllm:cache_config_info{block_size="16",cache_dtype="auto",enable_prefix_caching="True",engine="0",gpu_memory_utilization="0.9",num_gpu_blocks="8981"} 1.0

@@ -1,0 +1,63 @@
+# R3 · Knee validation (03 §6, Q3, open item 1). Open-loop Poisson arrivals at stepped
+# rates, lognormal lengths, KV below the ceiling.
+#
+# Lengths: prompt lognormal median 256 (sigma 0.8, mean ~350, p99 ~1.6k), output median 96
+# (sigma 0.6, mean ~115, p99 ~390). They are short on purpose. Past the knee vLLM keeps
+# admitting work until max_num_seqs (256) or the KV pool runs out. At these lengths a running
+# request holds ~435 tokens on average, so 256 of them hold ~111k tokens, under the ~140k
+# pool. The knee therefore comes from compute and bandwidth (and the max_num_seqs cap), never
+# from KV exhaustion, which R4 and R5 cover. With R5's longer lengths the pool fills right at
+# the knee.
+# Rates: the provisional roofline puts capacity at ~10 req/s at batch 32, rising to ~20 at
+# batch 256, so the knee should fall around 14-19 req/s. The ladder is coarse (2 req/s) up
+# to 12, then 1 req/s to 20 (~6% resolution near the knee), then 22 and 24.
+# `overload_stop` skips the remaining rates once two steps in a row take more than 1.5x their
+# arrival window, so the run ends just past the knee instead of queueing for an hour.
+# Hold: 180 s per step. Near the knee E2E is ~3-5 s, so a step spans dozens of request
+# lifetimes; B4 drops the first 30 s as transient. Each step drains before the next starts.
+# If R1/R2 move the capacity estimate, shift the whole ladder with --rate-scale.
+# Lengths come from a pre-generated custom dataset (fully random tokens, no shared
+# prefixes). Bench's detailed output keeps every request's input and output length for B4.
+
+id = "R3"
+title = "Knee validation"
+purpose = "Stepped open-loop rates with lognormal lengths, each held to steady state, to check the simulated saturation knee"
+feeds = "Validation (B4): TTFT and TPOT p50/p99 per step, knee location"
+kind = "sweep"
+gpus = [0]
+
+[warmup]
+num_prompts = 16
+input_len = 256
+output_len = 96
+max_concurrency = 8
+
+[defaults]
+dataset = "lognormal"
+hold_s = 180
+burstiness = 1.0     # Poisson
+cooldown_s = 20
+lognormal = { input_median = 256, input_sigma = 0.8, input_min = 16, input_max = 4096, output_median = 96, output_sigma = 0.6, output_min = 8, output_max = 768 }
+
+[[sweeps]]
+name = "knee"
+note = "open-loop Poisson steps; stops after two consecutive overloaded steps"
+overload_stop = { duration_ratio = 1.5, consecutive = 2 }
+points = [
+  { id = "rate02", request_rate = 2 },
+  { id = "rate04", request_rate = 4 },
+  { id = "rate06", request_rate = 6 },
+  { id = "rate08", request_rate = 8 },
+  { id = "rate10", request_rate = 10 },
+  { id = "rate12", request_rate = 12 },
+  { id = "rate13", request_rate = 13 },
+  { id = "rate14", request_rate = 14 },
+  { id = "rate15", request_rate = 15 },
+  { id = "rate16", request_rate = 16 },
+  { id = "rate17", request_rate = 17 },
+  { id = "rate18", request_rate = 18 },
+  { id = "rate19", request_rate = 19 },
+  { id = "rate20", request_rate = 20 },
+  { id = "rate22", request_rate = 22 },
+  { id = "rate24", request_rate = 24 },
+]

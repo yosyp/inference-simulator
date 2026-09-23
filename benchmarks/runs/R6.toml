@@ -1,0 +1,63 @@
+# R6 · Prefix cache (03 §6). Warm vs cold TTFT. In KV terms a follow-up turn is a cached
+# prefix plus a new suffix.
+#
+# - warm: `random` with a fixed shared prefix (1k-32k) and a 256-token suffix, batch 1. The
+#   cache is reset before each point, so request 0 is cold and requests 1..n-1 reuse the
+#   prefix and prefill only the suffix. B3 drops request 0 from warm TTFT.
+# - cold: the same total lengths with no shared prefix; every request prefills everything.
+# - mix: vLLM's prefix_repetition under 8-way concurrency, 8 shared 4k prefixes x 16
+#   follow-ups vs 128 distinct prefixes. This checks the cache under load, not only at batch 1.
+# Prefix sizes span a short chat (1k) to a long session (32k); calibration.json keeps one
+# pair (prefixTokens), and B3 picks it from this sweep.
+
+id = "R6"
+title = "Prefix cache"
+purpose = "Warm (cached prefix + new suffix) vs cold (nothing cached) TTFT at matched prompt lengths"
+feeds = "Cache model check; calibration prefixCache {warmTtftMs, coldTtftMs, prefixTokens}"
+kind = "sweep"
+gpus = [0]
+
+[warmup]
+num_prompts = 8
+input_len = 2048
+output_len = 16
+max_concurrency = 1
+
+[defaults]
+dataset = "random"
+output_len = 16
+max_concurrency = 1
+request_rate = "inf"
+cooldown_s = 3
+
+[[sweeps]]
+name = "warm"
+note = "shared prefix + 256-token suffix at batch 1; request 0 is the cold fill"
+defaults = { input_len = 256 }
+points = [
+  { id = "warm_p1k",  prefix_len = 1024,  num_prompts = 12 },
+  { id = "warm_p4k",  prefix_len = 4096,  num_prompts = 12 },
+  { id = "warm_p8k",  prefix_len = 8192,  num_prompts = 12 },
+  { id = "warm_p16k", prefix_len = 16384, num_prompts = 12 },
+  { id = "warm_p32k", prefix_len = 32768, num_prompts = 12 },
+]
+
+[[sweeps]]
+name = "cold"
+note = "same total lengths (prefix + 256), nothing shared"
+points = [
+  { id = "cold_p1k",  input_len = 1280,  num_prompts = 8 },
+  { id = "cold_p4k",  input_len = 4352,  num_prompts = 8 },
+  { id = "cold_p8k",  input_len = 8448,  num_prompts = 8 },
+  { id = "cold_p16k", input_len = 16640, num_prompts = 6 },
+  { id = "cold_p32k", input_len = 33024, num_prompts = 6 },
+]
+
+[[sweeps]]
+name = "mix"
+note = "prefix_repetition at 8 concurrent: shared vs distinct 4k prefixes"
+defaults = { dataset = "prefix_repetition", output_len = 64, max_concurrency = 8 }
+points = [
+  { id = "mix_shared", num_prompts = 128, prefix_repetition = { prefix_len = 4096, suffix_len = 256, num_prefixes = 8 } },
+  { id = "mix_unique", num_prompts = 128, prefix_repetition = { prefix_len = 4096, suffix_len = 256, num_prefixes = 128 } },
+]

@@ -1,0 +1,34 @@
+# R8 · Independence (03 §6, §4). Both GPUs at full load together vs each alone. If the
+# replicas don't interfere (they share the socket link, host memory, the power budget and
+# the load-generator host), the Server A and B presets can scale replica count linearly.
+#
+# Phases: GPU 0 alone, GPU 1 alone (the other idle), then both at once with identical work.
+# Servers start one at a time, because two engines compiling at once would race on the
+# shared compile cache. Three loads cover the regimes the simulator uses:
+# - decode_c128: decode-bound (weight and KV reads), the steady state of a busy replica.
+# - prefill_c4: 8k prompts, compute-bound, plus host-side tokenization on the client.
+# - mixed_c64: chunked prefill interleaved with decode.
+# Each stays under the KV pool (<= 128 x 640 = 82k tokens) so preemption can't blur the
+# comparison. Keep both GPUs free for the whole run: a solo phase needs the other GPU idle.
+
+id = "R8"
+title = "Independence"
+purpose = "Throughput and latency of each GPU alone vs both under identical load at the same time"
+feeds = "Server A/B validity (03 §4)"
+kind = "independence"
+gpus = [0, 1]
+phases = [[0], [1], [0, 1]]
+
+[defaults]
+dataset = "random"
+request_rate = "inf"
+cooldown_s = 10
+
+[[sweeps]]
+name = "load"
+note = "identical closed-loop work in every phase"
+points = [
+  { id = "decode_c128", input_len = 128,  output_len = 512, max_concurrency = 128, num_prompts = 512, note = "decode-bound" },
+  { id = "prefill_c4",  input_len = 8192, output_len = 16,  max_concurrency = 4,   num_prompts = 64,  note = "prefill-bound" },
+  { id = "mixed_c64",   input_len = 1024, output_len = 256, max_concurrency = 64,  num_prompts = 256, note = "mixed" },
+]

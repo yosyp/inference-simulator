@@ -1,0 +1,16 @@
+# R0 · Startup (03 §6). Start vLLM, wait until ready, send one request, read the resolved
+# engine config, stop. Short enough to be the first run the author approves.
+
+id = "R0"
+title = "Startup"
+purpose = "Record the KV cache size in tokens, max concurrency, block size, max_num_seqs and max_num_batched_tokens vLLM reports"
+feeds = "Simulator constants (02 §2): kvPoolTokens, blockSize, maxNumSeqs, maxNumBatchedTokens"
+kind = "startup"
+# Both GPUs, one after the other. The pools should match; a smaller one means something else
+# holds memory on that GPU. For the smoke run use `--gpus 0`.
+gpus = [0, 1]
+
+# Also times the first request after ready (a startup phase in 03 §6 R7).
+[first_request]
+input_len = 128
+output_len = 16

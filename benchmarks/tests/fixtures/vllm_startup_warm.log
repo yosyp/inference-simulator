@@ -1,0 +1,16 @@
+[1;36m(APIServer pid=77001)[0;0m [32mINFO[0m 09-23 06:00:01 [api_server.py:1914] vLLM API server version 0.20.1
+[1;36m(APIServer pid=77001)[0;0m [32mINFO[0m 09-23 06:00:05 [scheduler.py:240] Chunked prefill is enabled with max_num_batched_tokens=2048.
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:09 [core.py:110] Initializing a V1 LLM engine (v0.20.1) with config: model='meta-llama/Llama-3.1-8B-Instruct'
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:10 [gpu_model_runner.py:4778] Starting to load model meta-llama/Llama-3.1-8B-Instruct...
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:13 [default_loader.py:385] Loading weights took 2.84 seconds
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:14 [gpu_model_runner.py:4880] Model loading took 14.9905 GiB memory and 3.402114 seconds
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:17 [backends.py:1129] Dynamo bytecode transform time: 3.10 s
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:19 [backends.py:291] Directly load the compiled graph(s) for compile range (1, 2048) from the cache, took 1.874 s
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:20 [monitor.py:53] torch.compile took 5.21 s in total
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:22 [gpu_worker.py:441] Available KV cache memory: 17.54 GiB
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:22 [kv_cache_utils.py:1708] GPU KV cache size: 143,696 tokens
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:22 [kv_cache_utils.py:1710] Maximum concurrency for 131,072 tokens per request: 1.10x
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:30 [gpu_model_runner.py:6134] Graph capturing finished in 8 secs, took 0.61 GiB
+[1;36m(EngineCore pid=77050)[0;0m [32mINFO[0m 09-23 06:00:30 [core.py:295] init engine (profile, create kv cache, warmup model) took 16.02 s (compilation: 5.21 s)
+[1;36m(APIServer pid=77001)[0;0m [32mINFO[0m 09-23 06:00:32 [api_server.py:602] Starting vLLM server on http://127.0.0.1:8001
+[1;36m(APIServer pid=77001)[0;0m INFO:     Application startup complete.

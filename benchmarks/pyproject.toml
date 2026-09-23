@@ -1,0 +1,44 @@
+[project]
+name = "inference-sim-benchmarks"
+version = "0.1.0"
+description = "vLLM benchmark harness for the Inference Simulator calibration (docs/03-benchmarks.md)"
+readme = "README.md"
+# vLLM 0.20.1 supports 3.10-3.14; 3.12 is the version its CI and wheels are exercised on most.
+requires-python = ">=3.12,<3.13"
+# The harness itself is stdlib plus NVML bindings, so tests and dry runs stay light.
+dependencies = [
+    "nvidia-ml-py>=13.580",
+]
+
+[project.scripts]
+harness = "harness.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+# The system under test (03 §2). Not installed by default: `uv sync --group engine`.
+# vLLM 0.20.1 pins torch 2.11.0; the PyPI torch 2.11.0 wheel ships the CUDA 13.0 runtime,
+# which driver 580.x supports. Pinned here explicitly so the lock records the stack.
+engine = [
+    "vllm==0.20.1 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "torch==2.11.0 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    # `vllm bench serve --dataset-name custom` (R3's lognormal lengths) reads JSONL with
+    # pandas, which is only in vLLM's heavy `bench` extra. Pull it alone.
+    "pandas>=2.2 ; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "harness"
+module-root = "scripts"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

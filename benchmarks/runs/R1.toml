@@ -1,0 +1,62 @@
+# R1 · Prefill calibration (03 §6, open item 1). Batch-1 TTFT vs prompt length -> eta_c.
+#
+# Sweep points, proposed:
+# - 128-2,048: one prefill step (2,048 = the default max_num_batched_tokens on A100 40GB),
+#   dominated by GEMMs at small M plus the fixed step overhead. Pins the low end.
+# - 3,072 straddles the first chunk boundary; above it, prefill is chunked in 2,048-token
+#   steps and each chunk attends to everything before it.
+# - ~1.5x spacing up to 32k: typical session contexts, and tab 1's long prompt (16-32k, K3).
+# - 16k spacing from 48k to 120k: attention grows from about a third to about two thirds of
+#   prefill FLOPs (03 open item 3); these points decide whether one eta_c fits or it splits.
+# - 120,000 is the top: under max_model_len 131,072 and inside the ~140k KV pool at batch 1.
+# Repetitions: batch-1 TTFT is steady, so 30 short requests, down to 5 at >= 64k where each
+# takes 10-40 s. output_len 1 ends each request at its first token, so no decode steps mix in.
+
+id = "R1"
+title = "Prefill calibration"
+purpose = "Batch-1 TTFT vs prompt length from 128 to 120,000 tokens, to fit eta_c and report residuals across the range"
+feeds = "Cost model: computeEfficiency (eta_c); residuals for the eta_c split check (03 open item 3)"
+kind = "sweep"
+gpus = [0]
+prefix_cache_must_be_zero = true   # random prompts are unique; any hit is flagged (03 §5)
+
+# Untimed requests first, so lazy kernel loading and allocator growth don't land in in128.
+# The prefix cache is reset afterwards.
+[warmup]
+num_prompts = 8
+input_len = 2048
+output_len = 16
+max_concurrency = 1
+
+[defaults]
+dataset = "random"
+output_len = 1
+max_concurrency = 1       # batch 1, closed loop: the next request starts when the last one ends
+request_rate = "inf"
+cooldown_s = 3
+
+[[sweeps]]
+name = "ttft"
+note = "batch-1 TTFT vs prompt length; the prefix cache is reset before every point and each point has its own seed"
+points = [
+  { id = "in128",    input_len = 128,    num_prompts = 30 },
+  { id = "in256",    input_len = 256,    num_prompts = 30 },
+  { id = "in512",    input_len = 512,    num_prompts = 30 },
+  { id = "in1024",   input_len = 1024,   num_prompts = 30 },
+  { id = "in1536",   input_len = 1536,   num_prompts = 30 },
+  { id = "in2048",   input_len = 2048,   num_prompts = 30 },
+  { id = "in3072",   input_len = 3072,   num_prompts = 20 },
+  { id = "in4096",   input_len = 4096,   num_prompts = 20 },
+  { id = "in6144",   input_len = 6144,   num_prompts = 20 },
+  { id = "in8192",   input_len = 8192,   num_prompts = 20 },
+  { id = "in12288",  input_len = 12288,  num_prompts = 15 },
+  { id = "in16384",  input_len = 16384,  num_prompts = 15 },
+  { id = "in24576",  input_len = 24576,  num_prompts = 10 },
+  { id = "in32768",  input_len = 32768,  num_prompts = 10 },
+  { id = "in49152",  input_len = 49152,  num_prompts = 8 },
+  { id = "in65536",  input_len = 65536,  num_prompts = 5 },
+  { id = "in81920",  input_len = 81920,  num_prompts = 5 },
+  { id = "in98304",  input_len = 98304,  num_prompts = 5 },
+  { id = "in114688", input_len = 114688, num_prompts = 5 },
+  { id = "in120000", input_len = 120000, num_prompts = 5 },
+]

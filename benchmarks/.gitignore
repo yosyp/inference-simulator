@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Per-run scratch the harness never commits: unscrubbed server logs, generated prompt
+# datasets, bench client logs, R7 confirmation files. Scrubbed copies sit next to it.
+raw/*/local/
+*.tmp

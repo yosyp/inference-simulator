@@ -1,0 +1,39 @@
+# R4 · KV exhaustion (03 §6, Q5). Long outputs at a load that fills the KV pool; the 1 s
+# /metrics scrape captures preemptions, KV %, running and waiting.
+#
+# - closed_c48: 48 requests (1,024 in / 4,096 out) start together and grow in lockstep.
+#   48 x (1,024 + t) tokens crosses a ~140k pool at t = ~1,900 output tokens, so preemption
+#   starts at a predictable moment. Two waves. This is the cleanest trajectory to compare with
+#   the simulator.
+# - open_r025 / open_r050: Poisson arrivals held 300 s. Each request lives ~100 s (4,096
+#   tokens at ~25 ms), so 0.25 req/s keeps ~25 in flight (~60% of the pool) and 0.5 req/s
+#   drives ~50 in flight, past the ceiling.
+
+id = "R4"
+title = "KV exhaustion"
+purpose = "Long outputs at a load that fills the pool: capture preemption onset, KV % and waiting-queue trajectories"
+feeds = "Validation (B4): preemption onset and KV % trajectory"
+kind = "sweep"
+gpus = [0]
+expect_preemption = true
+
+[defaults]
+dataset = "random"
+input_len = 1024
+output_len = 4096
+cooldown_s = 30
+
+[[sweeps]]
+name = "closed"
+note = "48 concurrent requests growing together past the pool"
+points = [
+  { id = "closed_c48", max_concurrency = 48, num_prompts = 96 },
+]
+
+[[sweeps]]
+name = "open"
+note = "Poisson arrivals below and above the rate that fills the pool"
+points = [
+  { id = "open_r025", request_rate = 0.25, hold_s = 300 },
+  { id = "open_r050", request_rate = 0.5,  hold_s = 300 },
+]

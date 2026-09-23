@@ -1,0 +1,38 @@
+# R5 · Sustained overload (03 §6, Q5). Overload held for several minutes: waiting-queue
+# growth and preemption rate at steady thrash.
+#
+# Longer lognormal lengths than R3 (prompt median 512, output median 128): a running request
+# holds ~780 tokens, so the KV pool (~140k) fills at ~180 running requests, before
+# max_num_seqs (256). Under overload the engine keeps admitting until the pool is full, then
+# preempts. That thrash is what this run records, with the waiting queue growing behind it.
+# The provisional roofline puts this workload's knee near 9-10 req/s, where the pool is
+# already close to full. 15 req/s is ~1.5x that, held 10 minutes. After the hold, bench waits
+# for the backlog to drain (several more minutes); the drain is data too.
+# If R1/R2 move the capacity estimate, set the rate with --set request_rate=<1.5 x knee>.
+
+id = "R5"
+title = "Sustained overload"
+purpose = "Open-loop overload held for 10 minutes: waiting-queue growth, preemption rate, KV % at steady thrash"
+feeds = "Validation (B4)"
+kind = "sweep"
+gpus = [0]
+expect_preemption = true
+
+[warmup]
+num_prompts = 16
+input_len = 512
+output_len = 128
+max_concurrency = 8
+
+[defaults]
+dataset = "lognormal"
+burstiness = 1.0
+cooldown_s = 30
+lognormal = { input_median = 512, input_sigma = 0.8, input_min = 32, input_max = 8192, output_median = 128, output_sigma = 0.6, output_min = 16, output_max = 1024 }
+
+[[sweeps]]
+name = "overload"
+note = "~1.5x this workload's expected knee, held 600 s"
+points = [
+  { id = "overload_r15", request_rate = 15, hold_s = 600 },
+]
