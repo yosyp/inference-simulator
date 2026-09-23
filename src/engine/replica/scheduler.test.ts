@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import raw from '../../../benchmarks/derived/calibration.json';
 import { parseCalibration } from '../calibration.ts';
 import { batch1TpotMs, batch1TtftMs } from '../cost/index.ts';
-import { OUTCOME, REQUEST_STATE } from '../results.ts';
+import { OUTCOME, REPLICA_STATE, REQUEST_STATE } from '../results.ts';
 import { runScript, testConfig, withEngine, type HarnessOptions, type Script } from './harness.ts';
 import type { StepInfo } from './steps.ts';
 
@@ -91,6 +91,49 @@ describe('batch-1 timing matches E3 reference helpers', () => {
       requests: [{ atMs: 0, promptTokens: 1_000, outputTokens: 5, timeoutMs: ttft * 0.999 }],
     };
     for (const { d } of both(late)) expect(d.outcome[0]).toBe(OUTCOME.timedOut);
+  });
+});
+
+describe('request overhead and cached-token cost (X4a)', () => {
+  const xcal = {
+    ...cal,
+    costModel: {
+      ...cal.costModel,
+      decodePerSeqMs: 0.097,
+      cachedTokenMs: 0.0059,
+      requestOverheadMs: 18.8,
+    },
+  };
+  const config = testConfig({ tunable: { systemPromptTokens: 800 } });
+
+  it('batch-1 TTFT is the overhead plus the steps; the admitting step pays for its hits', () => {
+    const script = {
+      requests: [{ atMs: 100, promptTokens: 1_000, outputTokens: 10, systemPromptTokens: 800 }],
+    };
+    for (const { d, steps } of both(script, { config }, xcal)) {
+      expect(d.cachedTokens[0]).toBe(800);
+      expect(steps[0]!.atMs).toBeCloseTo(100 + 18.8, 9);
+      relClose(d.firstTokenMs[0]! - 100, batch1TtftMs(1_000, CHUNK, xcal, 800));
+      let end = batch1TtftMs(1_000, CHUNK, xcal, 800);
+      for (let g = 1; g < 10; g++) end += batch1TpotMs(1_000 + g, xcal);
+      relClose(d.endMs[0]! - 100, end);
+      expect(d.states[0]).toEqual([S.waiting, S.prefill, S.decode, S.finished]);
+    }
+  });
+
+  it('a request cancelled or failed during its overhead never runs', () => {
+    const script = {
+      requests: [
+        { atMs: 0, promptTokens: 500, outputTokens: 5, cancelAtMs: 10 },
+        { atMs: 50, promptTokens: 500, outputTokens: 5 },
+      ],
+      replicaChanges: [{ atMs: 60, replica: 0, state: REPLICA_STATE.crashed }],
+    };
+    for (const { d, steps } of both(script, {}, xcal)) {
+      expect(d.outcome[0]).toBe(OUTCOME.timedOut);
+      expect(d.outcome[1]).toBe(OUTCOME.failed);
+      expect(steps).toHaveLength(0);
+    }
   });
 });
 

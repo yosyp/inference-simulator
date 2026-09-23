@@ -11,9 +11,14 @@ import { REPLICA_STATE } from '../results.ts';
 /** Event kinds (replica range 300-399). */
 export const EV_STEP_END = 300;
 export const EV_KICK = 301;
+/** A dispatched request's request overhead has passed: it joins the waiting queue. */
+export const EV_ELIGIBLE = 302;
 
-/** Where a request is inside the replica that holds it. */
-export const PHASE = { none: 0, waiting: 1, prefill: 2, decode: 3 } as const;
+/**
+ * Where a request is inside the replica that holds it. `arriving`: dispatched, waiting out the
+ * calibration's requestOverheadMs (HTTP, tokenization) before the scheduler can see it.
+ */
+export const PHASE = { none: 0, waiting: 1, prefill: 2, decode: 3, arriving: 4 } as const;
 
 /** What a replica's pending event means. */
 export const MODE = {
@@ -40,6 +45,8 @@ export interface ReplicaEngine {
   /** REPLICA_STATE code. */
   state: number;
   pool: KvPool;
+  /** Requests in PHASE.arriving, in dispatch order (so in eligibility order). */
+  arriving: number[];
   /** FIFO; waiting[waitHead ..] are queued. Preempted requests go to the front. */
   waiting: number[];
   waitHead: number;
@@ -115,6 +122,8 @@ export interface RequestEngine {
   hitTokens: Float64Array;
   /** Most tokens whose KV existed before any preemption: prefill below it is recompute. */
   highWater: Float64Array;
+  /** Arriving phase: the EV_ELIGIBLE handle (NO_EVENT if it falls after the day). */
+  eligibleEv: Float64Array;
   blocks: number[][];
 }
 
@@ -159,6 +168,7 @@ export function createReplicaEngine(limits: EngineLimits, pool: KvPool): Replica
   return {
     state: REPLICA_STATE.ready,
     pool,
+    arriving: [],
     waiting: [],
     waitHead: 0,
     running: [],
@@ -198,6 +208,7 @@ const F64 = [
   'admitSeq',
   'hitTokens',
   'highWater',
+  'eligibleEv',
 ] as const;
 
 export function createRequestEngine(capacity: number): RequestEngine {

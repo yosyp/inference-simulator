@@ -12,6 +12,7 @@ import { flushNotices, noticeMark, pushNotice, resetNotices } from './notices.ts
 import { detachRequest, endRequest, generatedTokens } from './requests.ts';
 import { accrue, resetAccrual, syncSpan, truncateSpan } from './span.ts';
 import {
+  EV_ELIGIBLE,
   EV_KICK,
   EV_STEP_END,
   MODE,
@@ -64,7 +65,6 @@ function onDispatched(state: DayState, ctx: Ctx, s: RequestSlot, r: number): voi
     flushNotices(ctx, mark);
     return;
   }
-  q.phase[s] = PHASE.waiting;
   q.replica[s] = r;
   q.held[s] = 0;
   q.registered[s] = 0;
@@ -74,12 +74,29 @@ function onDispatched(state: DayState, ctx: Ctx, s: RequestSlot, r: number): voi
   q.hitTokens[s] = 0;
   q.highWater[s] = 0;
   q.blocks[s]!.length = 0;
+  t.state[s] = REQUEST_STATE.waiting;
+  pushNotice(TOPIC.requestState, s, REQUEST_STATE.waiting);
+  const overheadMs = ctx.input.calibration.costModel.requestOverheadMs;
+  if (overheadMs > 0) {
+    // The request overhead (HTTP, tokenization) runs before the scheduler sees the request.
+    q.phase[s] = PHASE.arriving;
+    q.eligibleEv[s] = ctx.schedule(ctx.nowMs + overheadMs, EV_ELIGIBLE, r, s);
+    rep.arriving.push(s);
+    flushNotices(ctx, mark);
+    return;
+  }
+  makeEligible(state, ctx, r, s);
+  flushNotices(ctx, mark);
+}
+
+/** A dispatched request joins the waiting queue (its state is already waiting). */
+function makeEligible(state: DayState, ctx: Ctx, r: number, s: RequestSlot): void {
+  const rep = replicaOf(state, r);
+  state.replica.req.phase[s] = PHASE.waiting;
   // Bring a span's lazy state (and so its KV level) up to now before the levels move.
   syncSpan(state, r, ctx.nowMs);
   const wasEmpty = waitingCount(rep) === 0;
   rep.waiting.push(s);
-  t.state[s] = REQUEST_STATE.waiting;
-  pushNotice(TOPIC.requestState, s, REQUEST_STATE.waiting);
   if (rep.mode === MODE.idle) {
     rep.mode = MODE.kick;
     rep.ev = ctx.schedule(ctx.nowMs, EV_KICK, r);
@@ -88,7 +105,28 @@ function onDispatched(state: DayState, ctx: Ctx, s: RequestSlot, r: number): voi
     truncateSpan(state, ctx, r, EV_STEP_END);
   }
   syncLevels(state, r, ctx.nowMs);
+}
+
+function onEligible(state: DayState, ctx: Ctx, r: number, s: RequestSlot, handle: number): void {
+  resetNotices();
+  const q = state.replica.req;
+  if (q.phase[s] !== PHASE.arriving || q.eligibleEv[s] !== handle || q.replica[s] !== r) {
+    throw new Error(`replica ${r}: stale eligibility for slot ${s}`);
+  }
+  const rep = replicaOf(state, r);
+  rep.arriving.splice(rep.arriving.indexOf(s), 1);
+  q.eligibleEv[s] = NO_EVENT;
+  const mark = noticeMark();
+  makeEligible(state, ctx, r, s);
   flushNotices(ctx, mark);
+}
+
+/** Takes an arriving request off its replica and cancels its eligibility. */
+function dropArriving(state: DayState, ctx: Ctx, rep: ReplicaEngine, s: RequestSlot): void {
+  const q = state.replica.req;
+  rep.arriving.splice(rep.arriving.indexOf(s), 1);
+  ctx.cancel(q.eligibleEv[s]!);
+  q.eligibleEv[s] = NO_EVENT;
 }
 
 function onCancelled(state: DayState, ctx: Ctx, s: RequestSlot): void {
@@ -97,6 +135,12 @@ function onCancelled(state: DayState, ctx: Ctx, s: RequestSlot): void {
   const r = q.replica[s]!;
   const rep = replicaOf(state, r);
   const mark = noticeMark();
+  if (q.phase[s] === PHASE.arriving) {
+    dropArriving(state, ctx, rep, s);
+    endRequest(state, s, OUTCOME.timedOut, ctx.nowMs, 0);
+    flushNotices(ctx, mark);
+    return;
+  }
   syncSpan(state, r, ctx.nowMs);
   const wasRunning = q.phase[s] !== PHASE.waiting;
   const output = generatedTokens(state, s);
@@ -119,8 +163,9 @@ function failAll(state: DayState, ctx: Ctx, r: number): void {
   const mark = noticeMark();
   syncSpan(state, r, ctx.nowMs);
   accrue(state, r, ctx.nowMs);
-  const doomed = [...rep.running, ...rep.waiting.slice(rep.waitHead)];
+  const doomed = [...rep.running, ...rep.waiting.slice(rep.waitHead), ...rep.arriving];
   const outputs = doomed.map((s) => generatedTokens(state, s));
+  for (const s of [...rep.arriving]) dropArriving(state, ctx, rep, s);
   rep.running.length = 0;
   rep.waiting.length = 0;
   rep.waitHead = 0;
@@ -206,6 +251,13 @@ export function createReplicaModule(options: ReplicaModuleOptions = {}): EngineM
         name: 'replica.stepEnd',
         priority: PRIORITY.engine,
         handle: (state, ev, ctx) => onStepEnd(state, ctx, ev.a, ev.handle, opts),
+      },
+      {
+        // Same band as the router's dispatch, which it follows by the request overhead.
+        kind: EV_ELIGIBLE,
+        name: 'replica.eligible',
+        priority: PRIORITY.router,
+        handle: (state, ev, ctx) => onEligible(state, ctx, ev.a, ev.b, ev.handle),
       },
       {
         // Idle to busy: compose once the instant settles, so same-instant dispatches share a step.

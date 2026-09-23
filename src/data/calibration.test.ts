@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import raw from '../../benchmarks/derived/calibration.json';
+import measured from '../../benchmarks/derived/calibration.measured.json';
 import { parseCalibration } from '../engine/calibration.ts';
 import { calibration } from './calibration.ts';
 
@@ -19,5 +20,17 @@ describe('calibration', () => {
     bad.costModel.computeEfficiency = 1.5;
     expect(() => parseCalibration(bad)).toThrow(/costModel\.computeEfficiency/);
     expect(() => parseCalibration({ ...raw, status: 'guess' })).toThrow(/status/);
+  });
+
+  it('defaults the X4a cost terms to 0 and reads them from the measured file', () => {
+    const c = parseCalibration(raw).costModel;
+    expect([c.decodePerSeqMs, c.cachedTokenMs, c.requestOverheadMs]).toEqual([0, 0, 0]);
+    const m = parseCalibration(measured).costModel;
+    expect(m.decodePerSeqMs).toBeGreaterThan(0);
+    expect(m.cachedTokenMs).toBeGreaterThan(0);
+    expect(m.requestOverheadMs).toBeGreaterThan(0);
+    const bad = structuredClone(raw) as { costModel: Record<string, number> };
+    bad.costModel.requestOverheadMs = -1;
+    expect(() => parseCalibration(bad)).toThrow(/costModel\.requestOverheadMs/);
   });
 });

@@ -220,6 +220,7 @@ function admitWaiting(state: DayState, rep: ReplicaEngine, r: number, b: Budget)
     }
     b.recomputed += pushChunk(state, rep, s, cached, n);
     b.used += n;
+    rep.desc.prefillCachedTokens += cached; // E3's cached-token term, paid by the admitting step
     t.state[s] = REQUEST_STATE.prefill;
     pushNotice(TOPIC.requestState, s, REQUEST_STATE.prefill);
   }
@@ -270,6 +271,7 @@ export function compose(state: DayState, ctx: Ctx, r: number, opts: SchedulerOpt
   desc.prefillTokens = 0;
   desc.prefillPriorTokens = 0;
   desc.prefillAttentionPairs = 0;
+  desc.prefillCachedTokens = 0;
   if (rep.running.length > 0 || waitingCount(rep) > 0) {
     budget.preempted = scheduleDecodes(state, rep, r);
     budget.used = desc.decodeSeqs;

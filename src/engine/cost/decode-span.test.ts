@@ -12,7 +12,13 @@ import {
   emptyDecodeSpan,
   type DecodeSpan,
 } from './decode-span.ts';
-import { emptyStepCost, emptyStepDesc, stepTime } from './step.ts';
+import {
+  addAdmittedChunk,
+  addDecodeSequence,
+  emptyStepCost,
+  emptyStepDesc,
+  stepTime,
+} from './step.ts';
 
 const provisional = parseCalibration(raw);
 
@@ -263,5 +269,39 @@ describe('decodeSpanStepsWithin', () => {
     const k = decodeSpanStepsWithin(span, dayMs);
     expect(decodeSpanDurationMs(span, k)).toBeLessThanOrEqual(dayMs);
     expect(decodeSpanDurationMs(span, k + 1)).toBeGreaterThan(dayMs);
+  });
+});
+
+describe('cost terms outside the roofline (X4a)', () => {
+  const cal: Calibration = {
+    ...provisional,
+    costModel: { ...provisional.costModel, decodePerSeqMs: 0.097, cachedTokenMs: 0.0059 },
+  };
+
+  it('a step adds decodePerSeqMs per decode sequence and cachedTokenMs per admitted hit', () => {
+    const desc = emptyStepDesc();
+    addDecodeSequence(desc, 500);
+    addDecodeSequence(desc, 900);
+    addAdmittedChunk(desc, 4_096, 256);
+    const base = stepTime(desc, provisional).stepMs;
+    expect(stepTime(desc, cal).stepMs).toBeCloseTo(base + 2 * 0.097 + 4_096 * 0.0059, 9);
+    expect(desc.prefillCachedTokens).toBe(4_096);
+  });
+
+  it('a span with the per-sequence term still matches its steps exactly', () => {
+    const batch = 96;
+    const context = 96 * 3_000;
+    const span = decodeSpan(batch, context, cal);
+    let total = 0;
+    for (let j = 0; j < 400; j++) {
+      const desc = emptyStepDesc();
+      desc.decodeSeqs = batch;
+      desc.decodeContextTokens = context + j * batch;
+      const ms = stepTime(desc, cal).stepMs;
+      expect(decodeSpanStepMs(span, j)).toBeCloseTo(ms, 9);
+      total += ms;
+    }
+    expect(decodeSpanDurationMs(span, 400)).toBeCloseTo(total, 6);
+    expect(decodeSpanStepsWithin(span, decodeSpanDurationMs(span, 400))).toBe(400);
   });
 });
