@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars (gitignored) and fill in. Never commit the copy.
+
+# The full site hostname, the same value as the SITE_DOMAIN secret.
+site_domain = "SUBDOMAIN.yoschwab.com"
+
+# From: gh api repos/yosyp/inference-simulator/actions/oidc/customization/sub --jq .sub_claim_prefix
+# Repositories created after 2026-07-15 look like repo:yosyp@<owner-id>/inference-simulator@<repo-id>.
+github_oidc_subject_prefix = "repo:yosyp@OWNER_ID/inference-simulator@REPO_ID"
+
+# Set to false if `aws iam list-open-id-connect-providers` already lists
+# token.actions.githubusercontent.com.
+create_oidc_provider = true
+
+# Optional, after the first deploy: the cloudfront_distribution_id output of
+# infra/site. Limits the deploy role to that one distribution.
+# site_distribution_id = "E0000000000000"

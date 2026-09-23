@@ -1,0 +1,18 @@
+# Terraform working files. State, plans, and variable files never enter the repo
+# (06 §4). The provider lock files (.terraform.lock.hcl) are committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# Local-only overrides, such as the backend override used for the first
+# bootstrap apply (infra/README.md, step 2).
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

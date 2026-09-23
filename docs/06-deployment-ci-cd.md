@@ -39,7 +39,7 @@ flowchart LR
 **`infra/bootstrap/`** — applied locally, once. CI depends on these resources, so they must exist before any workflow runs.
 
 - GitHub OIDC identity provider.
-- Deploy role. Trust is scoped to the `prod` branch: subject `repo:<owner>/<repo>:ref:refs/heads/prod`, audience `sts.amazonaws.com`.
+- Deploy role. Trust is scoped to the `prod` branch, audience `sts.amazonaws.com`. The subject is `<sub_claim_prefix>:ref:refs/heads/prod`. This repo was created after GitHub switched new repos to immutable OIDC subjects, so its prefix is `repo:<owner>@<owner-id>/<repo>@<repo-id>`, not `repo:<owner>/<repo>`. The author reads it from `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` into the gitignored bootstrap tfvars (K22).
 - Deploy role permissions: the site and log buckets; the state bucket, limited to the site stack's state key; CloudFront; ACM; and the Route 53 zone. No IAM write, because IAM stays in the bootstrap stack.
 - State bucket: versioning, encryption, public access blocked.
 - The bootstrap stack starts with local state. After the first apply, the author migrates it into the state bucket under its own key (`bootstrap/terraform.tfstate`), which the deploy role cannot touch (K20). It never enters the repo.
@@ -138,6 +138,7 @@ CloudFront access logs go to the log bucket and are deleted after 90 days (Q6). 
 |---|---|---|---|
 | K19 | When does CI run, and how does work integrate? | PRs into `prod` only (as drafted); every push and PR | CI on every push and PR. Work packages integrate on `main` through local worktree merges; the author pushes and promotes to `prod`. |
 | K20 | Open items 1, 3, and 4 | See §9 | (1) Option (a): no PR plans; `deploy.yml` plans immediately before apply (supersedes the PR-plan half of Q2). (3) Standard logging v2. (4) Migrate bootstrap state into the state bucket under its own key, out of the deploy role's reach. |
+| K22 | Which OIDC subject does the deploy role trust? (Found in I1: GitHub gives repos created after 2026-07-15 immutable subject claims.) | Spec's `repo:<owner>/<repo>` form; the repo's immutable prefix | The repo's `sub_claim_prefix`, passed as a bootstrap variable from gitignored tfvars. Numeric IDs stay out of the repo. |
 
 ## 9. Open items
 

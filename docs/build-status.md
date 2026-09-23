@@ -33,8 +33,8 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | B2 Runs | todo | | Needs author GPU approval |
 | B3 Derivation | todo | | |
 | B4 Validation | todo | | |
-| I1 Bootstrap | running | | With I2, one agent |
-| I2 Site | running | | With I1, one agent |
+| I1 Bootstrap | merged | main | OIDC subject uses the immutable prefix (K22); bootstrap also takes `site_domain` to scope Route 53 and ACM |
+| I2 Site | merged | main | aws provider 6.66; `headers.json` is the header source for Terraform and I4; outputs `site_bucket_name`, `cloudfront_distribution_id`, `site_url`, `log_bucket_name` |
 | I3 Deploy workflow | todo | | |
 | I4 CSP smoke test | todo | | |
 | I5 First deploy | todo | | Author runs |
