@@ -18,7 +18,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E9 Metrics | todo | | Waits for G1 |
 | E10 Oracle | todo | | |
 | E11 Assembly and worker | todo | | |
-| U1 Tokens and shell | running | | |
+| U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
 | U3 Canvas | todo | | |
 | U4 Charts | todo | | |

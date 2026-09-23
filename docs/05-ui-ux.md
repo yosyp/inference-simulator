@@ -144,11 +144,12 @@ Carried from the draft: the 70/30 split, the intro modal on every load without p
 | K16 | Where does a tab open, and how does a week play? | Monday 00:00 at 1×; entry point near the lesson moment | Opens paused at an entry point before the lesson moment; jump control; off-shift hours skipped; explicit Reset; leaving a tab discards forks |
 | K17 | Sidebar for self-serve visitors | Static text only; static text plus "Try this" | Static text plus "Try this" suggestions (still static, per Q4); rollup table collapsible |
 | K18 | Accessibility baseline | None stated; baseline | Keyboard operation, reduced motion for chrome, `aria-live` status line, never color alone |
+| K26 | Palette, encodings, and shell behavior (open item 2; decided in U1) | — | Okabe–Ito-based tokens with a non-color cue per state (`src/ui/theme/README.md` has contrast ratios and a deuteranopia/protanopia check). Tabs use manual activation, since switching tabs resets a run. Tabs, toolbar, and timeline stay fixed; only the canvas and charts scroll. The parameters drawer opens inline under the toolbar. The small-window notice is a banner, not a blocking screen. Fork, incident, and playhead markers use neutral ink plus a glyph, because any orange thin line matches the p99 vermillion under deuteranopia. |
 
 ## 12. Open items
 
 1. Resolved by K15.
-2. Palette and secondary encodings for dot states and replica states.
+2. Resolved by K26.
 3. The set of live status line templates per tab.
 4. Speed threshold at which dots switch to aggregate flow.
 5. Entry point (simulated time and speed) per tab; set during scenario tuning (00-build C2, C3).
