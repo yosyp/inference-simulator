@@ -1,5 +1,5 @@
 // The app: the shell (U1) with the tabs, toolbar, drawer, intro modal, and sidebar (U6), the canvas
-// (U3), charts (U4), and week timeline (U5). The rollup table (U7) is a placeholder until it lands.
+// (U3), charts (U4), week timeline (U5), and High-side rollup table (U7).
 
 import { useState } from 'react';
 import { calibration as appCalibration } from './data/calibration.ts';
@@ -11,15 +11,10 @@ import type { PlaybackState, PlaybackStore } from './playback/types.ts';
 import { usePlaybackSelector } from './playback/use-playback-selector.ts';
 import type { Scenario } from './scenarios/schema.ts';
 import { SimCanvas } from './sim-view/index.ts';
-import {
-  ControlPanel,
-  IntroModal,
-  ScenarioTabs,
-  SlotPlaceholder,
-  useScenarioRun,
-} from './ui/chrome/index.ts';
+import { ControlPanel, IntroModal, ScenarioTabs, useScenarioRun } from './ui/chrome/index.ts';
 import { AppShell } from './ui/shell/index.ts';
 import { Sidebar } from './ui/sidebar/index.ts';
+import { RollupTable } from './ui/high-side/index.ts';
 import { WeekTimeline } from './ui/timeline/index.ts';
 
 // --- Wiring. X1: swap these two for the scenario registry and the worker-backed store. -----------
@@ -87,7 +82,7 @@ export function App(props: AppProps) {
             scenario={run.scenario}
             mode={mode}
             calibration={calibration}
-            rollup={<SlotPlaceholder title="Rollup table" owner="U7" className="h-32" />}
+            rollup={<RollupTable store={store} />}
             onShowIntro={() => setIntroOpen(true)}
           />
         }
