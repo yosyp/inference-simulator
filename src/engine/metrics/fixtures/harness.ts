@@ -23,6 +23,7 @@ import {
 import { sharedModule } from '../../shared/module.ts';
 import { DAY_MS, HOUR_MS, dayStartMs, type DayIndex } from '../../time.ts';
 import { metricsModule } from '../module.ts';
+import { quietScalar } from '../quiet.ts';
 
 export const DAY: DayIndex = 1;
 export const START = dayStartMs(DAY);
@@ -117,19 +118,35 @@ function append(into: number[], from: ArrayLike<number>): void {
   for (let i = 0; i < from.length; i++) into.push(from[i]!);
 }
 
+/**
+ * Joins chunks into whole-run arrays over their bucket spans (floor(fromMs) to floor(toMs) per
+ * bucket width). Blocks may cover less than their chunk's span (quiet.ts); the buckets they omit
+ * are filled as quiet (quietScalar; empty histograms), as the results store treats them.
+ */
 export function join(chunks: readonly ResultChunk[]): Joined {
   const first = chunks[0]!;
+  const last = chunks[chunks.length - 1]!;
   const series = first.replicas + 1;
-  const buckets = chunks.reduce((n, c) => n + c.scalars.count, 0);
-  const histBuckets = chunks.reduce((n, c) => n + c.histograms.count, 0);
+  const b = first.scalars.bucketMs;
+  const hb = first.histograms.bucketMs;
+  const scalarStartMs = Math.floor(first.fromMs / b) * b;
+  const buckets = (Math.floor(last.toMs / b) * b - scalarStartMs) / b;
+  const histStartMs = Math.floor(first.fromMs / hb) * hb;
+  const histBuckets = (Math.floor(last.toMs / hb) * hb - histStartMs) / hb;
   const out: Joined = {
-    scalarStartMs: first.scalars.startMs,
-    buckets: 0,
+    scalarStartMs,
+    buckets,
     scalars: Object.fromEntries(
-      SCALAR_METRIC_NAMES.map((m) => [m, new Float32Array(buckets * series)]),
+      SCALAR_METRIC_NAMES.map((m) => {
+        const a = new Float32Array(buckets * series);
+        for (let k = 0; k < buckets; k++) {
+          for (let r = 0; r < series; r++) a[k * series + r] = quietScalar(m, r, first.replicas);
+        }
+        return [m, a];
+      }),
     ) as never,
-    histStartMs: first.histograms.startMs,
-    histBuckets: 0,
+    histStartMs,
+    histBuckets,
     hists: Object.fromEntries(
       HISTOGRAM_METRICS.map((m) => [
         m,
@@ -146,26 +163,34 @@ export function join(chunks: readonly ResultChunk[]): Joined {
     if (c.fromMs !== fromMs) throw new Error(`chunk starts at ${c.fromMs}, expected ${fromMs}`);
     fromMs = c.toMs;
     const sc = c.scalars;
-    if (sc.startMs !== out.scalarStartMs + out.buckets * sc.bucketMs) throw new Error('scalar gap');
+    const spanFrom = Math.floor(c.fromMs / b) * b;
+    const spanTo = Math.floor(c.toMs / b) * b;
+    if (sc.count > 0 && (sc.startMs < spanFrom || sc.startMs + sc.count * b > spanTo)) {
+      throw new Error('scalar block outside its chunk');
+    }
     if (sc.series !== series) throw new Error('scalar series changed');
+    const at = (sc.startMs - scalarStartMs) / b;
     for (const m of SCALAR_METRIC_NAMES) {
       if (sc.data[m].length !== sc.count * series) throw new Error(`${m} is mis-sized`);
-      out.scalars[m].set(sc.data[m], out.buckets * series);
+      out.scalars[m].set(sc.data[m], at * series);
     }
-    out.buckets += sc.count;
     const h = c.histograms;
-    if (h.startMs !== out.histStartMs + out.histBuckets * h.bucketMs) throw new Error('hist gap');
+    const hFrom = Math.floor(c.fromMs / hb) * hb;
+    const hTo = Math.floor(c.toMs / hb) * hb;
+    if (h.count > 0 && (h.startMs < hFrom || h.startMs + h.count * hb > hTo)) {
+      throw new Error('histogram block outside its chunk');
+    }
+    const hAt = (h.startMs - histStartMs) / hb;
     for (const m of HISTOGRAM_METRICS) {
       // Back to dense: cell k's bins at k × bins.
       const bins = HISTOGRAM_SPECS[m].bins;
       const cells = h.count * h.series;
       if (h.data[m].offsets.length !== cells + 1) throw new Error(`${m}: offsets mis-sized`);
-      const base = out.histBuckets * series;
+      const base = hAt * series;
       for (let k = 0; k < cells; k++) {
         addSparseCellInto(out.hists[m], (base + k) * bins, h.data[m], k);
       }
     }
-    out.histBuckets += h.count;
     for (const [block, into] of [
       [c.requests, out.requests],
       [c.transitions, out.transitions],

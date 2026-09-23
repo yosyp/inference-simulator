@@ -125,8 +125,8 @@ export function createResultsStore(
       changed(true);
     },
     addChunk(chunk: ResultChunk) {
-      addBlock(state.scal, chunk.day, chunk.scalars);
-      addBlock(state.hist, chunk.day, chunk.histograms);
+      addBlock(state.scal, chunk.day, chunk.scalars, chunk);
+      addBlock(state.hist, chunk.day, chunk.histograms, chunk);
       addMainChunk(dayData(chunk.day), chunk);
       changed();
     },

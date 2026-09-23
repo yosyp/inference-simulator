@@ -8,6 +8,8 @@ import {
 } from '../../engine/histogram.ts';
 import {
   FLEET_SERIES,
+  allocHistogramBlock,
+  allocScalarBlock,
   SCALAR_METRICS,
   SCALAR_METRIC_NAMES,
   replicaSeries,
@@ -141,6 +143,30 @@ describe('scalarSeries', () => {
     const empty = createResultsStore(2).index.scalarSeries('running', 0, windows[0]![1], 10);
     expect(empty.t.length).toBeLessThanOrEqual(10);
     expect([...empty.v].every(Number.isNaN)).toBe(true);
+  });
+});
+
+describe('quiet buckets the engine omits (quiet.ts)', () => {
+  it('reads a delivered chunk’s missing buckets as quiet, not uncomputed, until a cut', () => {
+    const s = createResultsStore(opts.replicas);
+    const [c] = makeFixtureChunks(opts, simMs(0, 20), simMs(0, 22), 2 * 60 * 60_000);
+    const series = opts.replicas + 1;
+    s.addChunk({
+      ...c!,
+      scalars: allocScalarBlock(c!.fromMs, FIXTURE_BUCKET_MS, 0, series),
+      histograms: allocHistogramBlock(c!.fromMs, FIXTURE_HIST_BUCKET_MS, 0, series),
+    });
+    const night = { fromMs: simMs(0, 20), toMs: simMs(0, 22) };
+    const running = s.index.scalarSeries('running', FLEET_SERIES, night, 10);
+    expect([...running.v]).toEqual(new Array(running.v.length).fill(0));
+    const ready = s.index.scalarSeries('readyReplicas', FLEET_SERIES, night, 10);
+    expect([...ready.v]).toEqual(new Array(ready.v.length).fill(opts.replicas));
+    const q = s.index.quantileSeries('ttft', FLEET_SERIES, night, 10, [0.5]);
+    expect([...q.counts]).toEqual(new Array(q.counts.length).fill(0));
+    s.cut(0, simMs(0, 21), false);
+    const after = s.index.scalarSeries('running', FLEET_SERIES, night, 2);
+    expect(after.v[0]).toBe(0);
+    expect(after.v[1]).toBeNaN();
   });
 });
 

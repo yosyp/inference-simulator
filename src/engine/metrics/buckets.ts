@@ -21,6 +21,7 @@ import {
   pushScalarBucket,
   sparseHists,
 } from './pending.ts';
+import { isEmptyHists, isQuietScalars } from './quiet.ts';
 import { METRIC_INDEX as MI, levelAreaAt, resetPending } from './slice.ts';
 
 const COUNTER_METRIC = REPLICA_COUNTERS.map((c) => MI[c]);
@@ -89,18 +90,35 @@ export function closeBucket(state: DayState, boundaryMs: SimMs, ctx: Ctx): void 
   o[MI.abandonedSessions * S] = meters.fleet.abandonedSessions - s.prevAbandoned;
   s.prevAbandoned = meters.fleet.abandonedSessions;
 
-  // Move the bucket out (Float64 → Float32) and open the next one.
-  const at = pushScalarBucket(s);
-  const data = s.scalars.data;
-  for (let m = 0; m < SCALAR_METRIC_NAMES.length; m++) {
-    data[SCALAR_METRIC_NAMES[m]!].set(o.subarray(m * S, m * S + S), at);
+  // Move the bucket out (Float64 → Float32) and open the next one. A quiet bucket outside the
+  // active window (quiet.ts) is dropped if nothing needed precedes it in this chunk; otherwise it
+  // is kept for now and trimmed at produceChunk if nothing needed follows it.
+  const scalarNeeded =
+    (boundaryMs > s.activeFromMs && startMs < s.activeToMs) ||
+    !isQuietScalars(o, S, MI.readyReplicas, R);
+  if (!scalarNeeded && s.scalars.count === 0) {
+    s.scalars.startMs = boundaryMs;
+  } else {
+    const at = pushScalarBucket(s);
+    const data = s.scalars.data;
+    for (let m = 0; m < SCALAR_METRIC_NAMES.length; m++) {
+      data[SCALAR_METRIC_NAMES[m]!].set(o.subarray(m * S, m * S + S), at);
+    }
+    if (scalarNeeded) s.scalarsNeeded = s.scalars.count;
   }
   o.fill(0);
   s.bucketStartMs = boundaryMs;
 
   if (boundaryMs % histBucketMs === 0) {
-    pushHistBucket(s, s.openHist);
-    for (const h of Object.values(s.openHist)) h.fill(0);
+    const histNeeded =
+      (boundaryMs > s.activeFromMs && s.histStartMs < s.activeToMs) || !isEmptyHists(s.openHist);
+    if (!histNeeded && s.hists.count === 0) {
+      s.hists.startMs = boundaryMs;
+    } else {
+      pushHistBucket(s, s.openHist);
+      if (histNeeded) s.histsNeeded = s.hists.count;
+      for (const h of Object.values(s.openHist)) h.fill(0);
+    }
     s.histStartMs = boundaryMs;
   }
 }
@@ -111,7 +129,8 @@ export function produceChunk(state: DayState, span: ChunkSpan, ctx: Ctx): Result
   const { config, day, detail } = ctx.input;
   const { bucketMs, histBucketMs } = config;
   const sc = s.scalars;
-  if (sc.startMs !== span.bucketsFromMs || sc.startMs + sc.count * bucketMs !== span.bucketsToMs) {
+  // Leading quiet buckets may have been dropped (quiet.ts), so pending may start later.
+  if (sc.startMs < span.bucketsFromMs || sc.startMs + sc.count * bucketMs !== span.bucketsToMs) {
     throw new Error(
       `metrics: pending buckets [${sc.startMs}, +${sc.count}) do not match the span [${span.bucketsFromMs}, ${span.bucketsToMs})`,
     );
@@ -119,7 +138,7 @@ export function produceChunk(state: DayState, span: ChunkSpan, ctx: Ctx): Result
   const h = s.hists;
   const histFrom = Math.floor(span.bucketsFromMs / histBucketMs) * histBucketMs;
   const histTo = Math.floor(span.bucketsToMs / histBucketMs) * histBucketMs;
-  if (h.startMs !== histFrom || h.startMs + h.count * histBucketMs !== histTo) {
+  if (h.startMs < histFrom || h.startMs + h.count * histBucketMs !== histTo) {
     throw new Error(`metrics: pending histograms do not match [${histFrom}, ${histTo})`);
   }
   const chunk: ResultChunk = {
@@ -127,8 +146,8 @@ export function produceChunk(state: DayState, span: ChunkSpan, ctx: Ctx): Result
     fromMs: span.fromMs,
     toMs: span.toMs,
     replicas: s.replicas,
-    scalars: exactScalars(sc),
-    histograms: sparseHists(h, histBucketMs),
+    scalars: exactScalars(sc, s.scalarsNeeded),
+    histograms: sparseHists(h, histBucketMs, s.histsNeeded),
     requests: exactRequests(s.requests, detail),
     transitions: exactTransitions(s.transitions, detail),
     replicaEvents: s.replicaEvents,

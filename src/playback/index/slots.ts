@@ -1,5 +1,10 @@
 // Per-day slot tables for scalar and histogram buckets: bucket start → block and offset. A series
 // query then costs O(buckets in the window), however many chunks delivered them.
+//
+// The engine omits quiet buckets outside the day's active window (src/engine/metrics/quiet.ts), so
+// a main chunk's block may cover less than the chunk. The chunk's other buckets are marked QUIET:
+// computed, all zero except readyReplicas' fleet series (quietScalar), histograms empty. They are
+// not gaps, and queries read them as those values.
 
 import { DAY_MS, WEEK_DAYS, type DayIndex, type SimMs } from '../../engine/time.ts';
 
@@ -16,14 +21,19 @@ export interface SlotEntry<B extends BucketBlock> {
   readonly startSlot: number;
 }
 
+/** Slot value of a computed bucket the engine omitted as quiet. -1 is a missing bucket. */
+export const QUIET = -2;
+
 /**
  * Global slot g covers [g × bucketMs, (g + 1) × bucketMs); day d holds slots
- * [d × slotsPerDay, (d + 1) × slotsPerDay). slots[d][local] is an index into entries[d], or -1.
+ * [d × slotsPerDay, (d + 1) × slotsPerDay). slots[d][local] is an index into entries[d], -1, or QUIET.
  */
 export interface SlotIndex<B extends BucketBlock> {
   /** 0 until the first non-empty block arrives. */
   bucketMs: number;
   slotsPerDay: number;
+  /** Series per bucket (replicas + 1), from the first block; 0 until then. */
+  series: number;
   slots: (Int32Array | null)[];
   entries: SlotEntry<B>[][];
 }
@@ -32,23 +42,30 @@ export function createSlotIndex<B extends BucketBlock>(): SlotIndex<B> {
   return {
     bucketMs: 0,
     slotsPerDay: 0,
+    series: 0,
     slots: Array.from({ length: WEEK_DAYS }, () => null),
     entries: Array.from({ length: WEEK_DAYS }, () => []),
   };
 }
 
+/**
+ * Adds a block. With `span` (a main chunk's [fromMs, toMs)), the chunk's buckets the block omits
+ * are marked QUIET: those in [floor(fromMs), floor(toMs)) at this bucket width.
+ */
 export function addBlock<B extends BucketBlock>(
   index: SlotIndex<B>,
   day: DayIndex,
   block: B,
+  span?: { fromMs: SimMs; toMs: SimMs },
 ): void {
-  if (block.count === 0) return;
+  if (block.count === 0 && !(span && block.bucketMs > 0)) return;
   if (index.bucketMs === 0) {
     if (!(block.bucketMs > 0) || DAY_MS % block.bucketMs !== 0) {
       throw new Error(`Bucket width ${block.bucketMs} ms must divide a day`);
     }
     index.bucketMs = block.bucketMs;
     index.slotsPerDay = DAY_MS / block.bucketMs;
+    index.series = block.series;
   } else if (block.bucketMs !== index.bucketMs) {
     throw new Error(`Bucket width changed from ${index.bucketMs} to ${block.bucketMs} ms`);
   }
@@ -58,6 +75,13 @@ export function addBlock<B extends BucketBlock>(
     index.slots[day] = slots;
     index.entries[day] = [];
   }
+  if (span) {
+    const base = day * DAY_MS;
+    const q0 = Math.max(0, Math.floor((span.fromMs - base) / index.bucketMs));
+    const q1 = Math.min(index.slotsPerDay, Math.floor((span.toMs - base) / index.bucketMs));
+    for (let i = q0; i < q1; i++) if (slots[i] === -1) slots[i] = QUIET;
+  }
+  if (block.count === 0) return;
   const entries = index.entries[day]!;
   const startSlot = Math.round((block.startMs - day * DAY_MS) / index.bucketMs);
   const lo = Math.max(0, startSlot);
@@ -98,7 +122,18 @@ export function dropSlotDay<B extends BucketBlock>(index: SlotIndex<B>, day: Day
   index.entries[day] = [];
 }
 
-/** The entry holding global slot g, or undefined. Its bucket is localSlot(index, g) - startSlot. */
+/** True if global slot g is a QUIET bucket. */
+export function isQuietAt<B extends BucketBlock>(index: SlotIndex<B>, g: number): boolean {
+  if (index.slotsPerDay === 0) return false;
+  const d = Math.floor(g / index.slotsPerDay);
+  const slots = index.slots[d];
+  return !!slots && slots[g - d * index.slotsPerDay] === QUIET;
+}
+
+/**
+ * The entry holding global slot g, or undefined (missing or QUIET). Its bucket is
+ * localSlot(index, g) - startSlot.
+ */
 export function entryAt<B extends BucketBlock>(
   index: SlotIndex<B>,
   g: number,
@@ -122,13 +157,14 @@ export function bucketIn<B extends BucketBlock>(
 
 /**
  * Calls visit(block, firstBucket, n) for each run of n consecutive present buckets of one block
- * among global slots [g0, g1), in time order. Per-run work (not per-bucket) keeps wide windows cheap.
+ * among global slots [g0, g1), in time order; block is null for a run of QUIET buckets. Per-run
+ * work (not per-bucket) keeps wide windows cheap.
  */
 export function forEachRun<B extends BucketBlock>(
   index: SlotIndex<B>,
   g0: number,
   g1: number,
-  visit: (block: B, firstBucket: number, n: number) => void,
+  visit: (block: B | null, firstBucket: number, n: number) => void,
 ): void {
   const spd = index.slotsPerDay;
   if (spd === 0) return;
@@ -149,6 +185,8 @@ export function forEachRun<B extends BucketBlock>(
         if (id >= 0) {
           const e = entries[id]!;
           visit(e.block, local - e.startSlot, n);
+        } else if (id === QUIET) {
+          visit(null, 0, n);
         }
         local += n;
       }

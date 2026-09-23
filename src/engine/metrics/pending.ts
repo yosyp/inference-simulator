@@ -82,16 +82,21 @@ export function pushHistBucket(
   h.count++;
 }
 
-export function exactScalars(b: ScalarBlock): ScalarBlock {
-  const out = allocScalarBlock(b.startMs, b.bucketMs, b.count, b.series);
-  const n = b.count * b.series;
+/** The first `count` pending buckets (default all), in an exact-size block. */
+export function exactScalars(b: ScalarBlock, count = b.count): ScalarBlock {
+  const out = allocScalarBlock(b.startMs, b.bucketMs, count, b.series);
+  const n = count * b.series;
   for (const m of SCALAR_METRIC_NAMES) out.data[m].set(b.data[m].subarray(0, n));
   return out;
 }
 
-/** The pending buckets as a sparse block (K29). */
-export function sparseHists(h: PendingHists, histBucketMs: number): HistogramBlock {
-  return histogramBlockFromDense(h.startMs, histBucketMs, h.count, h.series, h.dense);
+/** The first `count` pending buckets (default all) as a sparse block (K29). */
+export function sparseHists(
+  h: PendingHists,
+  histBucketMs: number,
+  count = h.count,
+): HistogramBlock {
+  return histogramBlockFromDense(h.startMs, histBucketMs, count, h.series, h.dense);
 }
 
 // Request records and transitions.

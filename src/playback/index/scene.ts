@@ -15,6 +15,7 @@ import {
   type ScalarMetric,
 } from '../../engine/results.ts';
 import { DAY_MS, MINUTE_MS, WEEK_DAYS, type SimMs } from '../../engine/time.ts';
+import { quietScalar } from '../../engine/metrics/quiet.ts';
 import type {
   DotView,
   Mode,
@@ -26,7 +27,7 @@ import type {
 import { dotStreamAt, type DayData } from './day.ts';
 import { activeAt } from './dots.ts';
 import { DOT_STATE, trackedView } from './records.ts';
-import { bucketIn, entryAt, forEachRun, type SlotIndex } from './slots.ts';
+import { bucketIn, entryAt, forEachRun, isQuietAt, type SlotIndex } from './slots.ts';
 
 export interface StoreState {
   replicas: number;
@@ -61,10 +62,17 @@ class Around {
     this.g0 = Math.max(dayFirst, this.g - Math.max(1, Math.round(MINUTE_MS / bucketMs)) + 1);
   }
 
+  /** A QUIET bucket's value (slots.ts), NaN for a series the fleet doesn't have. */
+  private quiet(metric: ScalarMetric, series: number): number {
+    const replicas = this.index.series - 1;
+    return series >= 0 && series <= replicas ? quietScalar(metric, series, replicas) : NaN;
+  }
+
   /** The metric in the bucket containing t, or NaN. */
   level(metric: ScalarMetric, series: number): number {
     const e = entryAt(this.index, this.g);
-    if (!e || series >= e.block.series) return NaN;
+    if (!e) return isQuietAt(this.index, this.g) ? this.quiet(metric, series) : NaN;
+    if (series >= e.block.series) return NaN;
     return e.block.data[metric][bucketIn(this.index, e, this.g) * e.block.series + series]!;
   }
 
@@ -73,6 +81,13 @@ class Around {
     let sum = 0;
     let n = 0;
     forEachRun(this.index, from, this.g + 1, (block, bucket, count) => {
+      if (!block) {
+        const q = this.quiet(metric, series);
+        if (Number.isNaN(q)) return;
+        sum += q * count;
+        n += count;
+        return;
+      }
       if (series >= block.series) return;
       const data = block.data[metric];
       for (let k = 0, i = bucket * block.series + series; k < count; k++, i += block.series) {
@@ -158,8 +173,9 @@ function ttftP99At(hist: SlotIndex<HistogramBlock>, t: SimMs): number {
   if (hist.bucketMs === 0) return NaN;
   const g = Math.floor(t / hist.bucketMs);
   const e = entryAt(hist, g);
-  if (!e) return NaN;
   const spec = HISTOGRAM_SPECS.ttft;
+  // A QUIET bucket is computed and empty: the quantile of no samples.
+  if (!e) return isQuietAt(hist, g) ? quantile(spec, new Uint32Array(spec.bins), 0, 0.99) : NaN;
   const scratch = new Uint32Array(spec.bins);
   addSparseCellInto(
     scratch,

@@ -14,6 +14,7 @@ import {
   type ScalarBlock,
   type ScalarMetric,
 } from '../../engine/results.ts';
+import { quietScalar } from '../../engine/metrics/quiet.ts';
 import type { QuantileData, SeriesData, TimeWindow } from '../types.ts';
 import { forEachRun, type SlotIndex } from './slots.ts';
 
@@ -63,7 +64,16 @@ export function scalarSeries(
   const perPoint = stepMs / bucketMs;
   let acc = 0;
   let present = 0;
-  const visit = (block: ScalarBlock, bucket: number, count: number) => {
+  const replicas = index.series - 1;
+  const quiet = series >= 0 && series <= replicas ? quietScalar(metric, series, replicas) : NaN;
+  const visit = (block: ScalarBlock | null, bucket: number, count: number) => {
+    if (!block) {
+      if (Number.isNaN(quiet)) return;
+      if (agg === 'max') acc = Math.max(acc, quiet);
+      else acc += quiet * count;
+      present += count;
+      return;
+    }
     const stride = block.series;
     if (series < 0 || series >= stride) return;
     const data = block.data[metric];
@@ -111,7 +121,12 @@ export function quantileSeries(
   const scratch = new Uint32Array(bins);
   const perPoint = stepMs / bucketMs;
   let present = 0;
-  const visit = (block: HistogramBlock, bucket: number, count: number) => {
+  const visit = (block: HistogramBlock | null, bucket: number, count: number) => {
+    if (!block) {
+      // Quiet buckets are computed and empty.
+      present += count;
+      return;
+    }
     if (series < 0 || series >= block.series) return;
     const data = block.data[metric];
     let cell = bucket * block.series + series;

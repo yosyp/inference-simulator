@@ -19,8 +19,14 @@ import { createMetricsSlice } from './slice.ts';
 export const metricsModule = defineModule({
   name: 'metrics',
   init(state, ctx) {
-    const { replicas, bucketMs, histBucketMs, shift } = ctx.input.config;
-    return createMetricsSlice(state, ctx.nowMs, { replicas, bucketMs, histBucketMs, shift });
+    const { replicas, bucketMs, histBucketMs, shift, diurnal } = ctx.input.config;
+    return createMetricsSlice(state, ctx.nowMs, {
+      replicas,
+      bucketMs,
+      histBucketMs,
+      shift,
+      firstKnotMs: diurnal.knots[0]?.[0],
+    });
   },
   notices: [
     { topic: TOPIC.requestArrived, handle: onArrived },

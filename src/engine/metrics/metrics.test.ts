@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { digestState } from '../core/plain.ts';
 import { HISTOGRAM_SPECS, binIndex, quantile } from '../histogram.ts';
 import { OUTCOME, REPLICA_STATE, REQUEST_STATE, type ScalarMetric } from '../results.ts';
+import { HOUR_MS } from '../time.ts';
 import {
   END,
   START,
@@ -344,5 +345,39 @@ describe('contract checks', () => {
       ]),
     ]).createDayRun(testInput({ replicas: R }));
     expect(() => run.advance(START + 2_000)).toThrow(/replica 5 out of range/);
+  });
+});
+
+describe('active-window emission (quiet.ts)', () => {
+  it('omits quiet buckets outside the active window, keeps busy ones, and joins them as quiet', () => {
+    const input = testInput({ replicas: R });
+    // Shift 07:00–19:00, first knot 07:00: the active window is 06:30–19:30.
+    input.config = {
+      ...input.config,
+      diurnal: { ...input.config.diurnal, knots: [[7 * HOUR_MS, 1]] },
+    };
+    const script: Action[] = [
+      { at: 1_000, do: 'counter', replica: 0, counter: 'prefillTokens', add: 100 },
+      { at: 3 * HOUR_MS, do: 'counter', replica: 0, counter: 'prefillTokens', add: 5 },
+    ];
+    const run = metricsRunner([scriptStub(script)]).createDayRun(input);
+    const night = run.advance(START + 6 * HOUR_MS);
+    const day = run.advance(END);
+    run.assertInvariants();
+    // Night: busy buckets are emitted with the quiet ones between them; the rest are trimmed.
+    expect([night.scalars.startMs, night.scalars.count]).toEqual([START, 3 * 360 + 1]);
+    expect(night.histograms.count).toBe(0);
+    // Day: from 06:30 to 19:30 exactly.
+    expect(day.scalars.startMs).toBe(START + 6.5 * HOUR_MS);
+    expect(day.scalars.count).toBe(13 * 360);
+    expect(day.histograms.startMs).toBe(START + 6.5 * HOUR_MS);
+    expect(day.histograms.count).toBe(13 * 60);
+    // Joined, the omitted buckets read as quiet: zeros, with every replica Ready.
+    const j = join([night, day]);
+    expect(j.buckets).toBe(8_640);
+    expect(scalarAt(j, 'prefillTokens', 0, F, R)).toBe(100);
+    expect(scalarAt(j, 'prefillTokens', 3 * 360, R0, R)).toBe(5);
+    expect(scalarAt(j, 'readyReplicas', 22 * 360, F, R)).toBe(R);
+    expect(scalarAt(j, 'prefillTokens', 22 * 360, F, R)).toBe(0);
   });
 });

@@ -21,6 +21,7 @@ import {
 import { REPLICA_COUNTERS, type ReplicaMeters } from '../shared/meters.ts';
 import type { SharedSlice } from '../shared/module.ts';
 import { DAY_MS, type SimMs } from '../time.ts';
+import { activeWindow } from './quiet.ts';
 
 export interface MetricsSlice {
   replicas: number;
@@ -67,6 +68,18 @@ export interface MetricsSlice {
   busyInShiftMs: Float64Array;
   shiftStartMs: SimMs;
   shiftEndMs: SimMs;
+
+  /**
+   * Active window [activeFromMs, activeToMs) (quiet.ts). Outside it, quiet buckets are not
+   * emitted: leading ones are dropped as they close (the pending block's start moves past them),
+   * trailing ones are trimmed at produceChunk.
+   */
+  activeFromMs: SimMs;
+  activeToMs: SimMs;
+  /** Pending scalar buckets up to the last one that must be emitted (0: none yet). */
+  scalarsNeeded: number;
+  /** Pending histogram buckets up to the last one that must be emitted (0: none yet). */
+  histsNeeded: number;
 }
 
 /** Dense histogram buckets in allocDenseHistograms layout; `count` used, arrays sized for capacity. */
@@ -122,6 +135,8 @@ export function resetPending(s: MetricsSlice, bucketMs: number, toMs: SimMs): vo
   s.transitions = allocTransitionBlock('all', 0);
   s.replicaEvents = [];
   s.emittedToMs = toMs;
+  s.scalarsNeeded = 0;
+  s.histsNeeded = 0;
 }
 
 function snapshotCounters(meters: ReplicaMeters, replicas: number): Float64Array {
@@ -138,9 +153,11 @@ export function createMetricsSlice(
     bucketMs: number;
     histBucketMs: number;
     shift: { startMs: number; endMs: number };
+    /** Time of day of the first diurnal knot; undefined if there are none. */
+    firstKnotMs?: number;
   },
 ): MetricsSlice {
-  const { replicas, bucketMs, histBucketMs, shift } = input;
+  const { replicas, bucketMs, histBucketMs, shift, firstKnotMs } = input;
   if (!Number.isInteger(replicas) || replicas < 1 || replicas > 127) {
     throw new RangeError(`metrics: ${replicas} replicas; records hold replica ids as int8`);
   }
@@ -176,5 +193,8 @@ export function createMetricsSlice(
     busyInShiftMs: new Float64Array(replicas),
     shiftStartMs,
     shiftEndMs: Math.max(shiftStartMs, clampDay(shift.endMs)),
+    ...activeWindow(nowMs, shift, firstKnotMs),
+    scalarsNeeded: 0,
+    histsNeeded: 0,
   };
 }
