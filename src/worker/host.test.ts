@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { calibration } from '../data/calibration.ts';
-import type { Patch } from '../engine/api.ts';
+import type { CoreDayRun } from '../engine/core/index.ts';
+import { runHeadless } from '../engine/headless.ts';
+import { createEngine, type AssembledEngine } from '../engine/index.ts';
 import { DAY_MS, HOUR_MS, MINUTE_MS, WEEK_DAYS, simMs, type DayIndex } from '../engine/time.ts';
 import type { WorkerToMain } from './protocol.ts';
 import {
+  addChunk,
   applyMessages,
   canonical,
   createTestHost,
@@ -97,6 +100,62 @@ describe('engine host: init and streaming', { timeout: 60_000 }, () => {
     expect(b.n).toBe(a.n);
     expect(b.view).toEqual(a.view);
   });
-});
 
-export type { Patch };
+  it('streams the same data as a headless week chunked differently', () => {
+    const config = smallConfig(2);
+    const t = createTestHost();
+    t.send(initMsg(scenarioOf(config), calibration, FOCUS));
+    t.runAll();
+    const view = emptyWeek();
+    applyMessages(view, t.out);
+    const ref = emptyWeek();
+    const week = runHeadless({ config, calibration, tracked: 3, chunkMs: 15 * MINUTE_MS });
+    for (const d of week.days) {
+      for (const c of d.chunks) addChunk(ref, c);
+      ref[d.day]!.rollup = d.rollup;
+    }
+    expect(canonical(view)).toEqual(canonical(ref));
+  });
+
+  it('keeps every engine invariant at every chunk, checkpoint, and fork', () => {
+    // Invariants after each advance (not each event: E5's cost ~10 ms per event with a full pool).
+    const checked = createEngine();
+    let checks = 0;
+    const wrap = (run: CoreDayRun): CoreDayRun => {
+      const advance = run.advance.bind(run);
+      return Object.assign(Object.create(run) as CoreDayRun, {
+        advance(untilMs: number) {
+          const chunk = advance(untilMs);
+          run.assertInvariants();
+          checks++;
+          return chunk;
+        },
+      });
+    };
+    const eng: AssembledEngine = {
+      ...checked,
+      createDayRun: (input) => wrap(checked.createDayRun(input)),
+      restoreDayRun: (input, cp) => wrap(checked.restoreDayRun(input, cp)),
+    };
+    const t = createTestHost({ engine: eng });
+    t.send(initMsg(scenarioOf(smallConfig(3, 30)), calibration, FOCUS));
+    t.runUntil(() => t.out.some((m) => m.type === 'dayComplete'));
+    t.send({
+      type: 'fork',
+      runId: 1,
+      revision: 1,
+      patch: { kind: 'event', atMs: simMs(2, 10, 7, 30), event: { type: 'crash', replica: 0 } },
+    });
+    t.send({
+      type: 'requestDetail',
+      runId: 1,
+      requestTag: 1,
+      fromMs: simMs(2, 9),
+      toMs: simMs(2, 9, 10),
+    });
+    t.send({ type: 'track', runId: 1, analyst: 9 });
+    t.runUntil(() => t.out.filter((m) => m.type === 'dayComplete').length >= 3);
+    expect(t.out.filter((m) => m.type === 'error')).toEqual([]);
+    expect(checks).toBeGreaterThan(300);
+  });
+});

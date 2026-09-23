@@ -1,8 +1,9 @@
 // Checkpoint storage per day (04 §3; S1 §6; 00-build §8 G1). The focus day keeps one every 15
 // simulated minutes, so a fork or detail request replays at most 15 minutes. Other days keep
-// hourly ones within a byte budget (at knee load a Server B checkpoint is about 3 MB with E4 as
-// merged), or none; their mornings are free. A day's checkpoints are valid until a fork cuts
-// before them: one at time t has applied only patches dated before t.
+// hourly ones within a byte budget (host.ts; at knee load a Server B checkpoint is about 3.6 MB
+// with E4 as merged, so only the nearest days keep a few); their mornings are free. A day's
+// checkpoints stay valid until a fork cuts before them: one at time t has applied only patches
+// dated before t, and holds no detail or tracked-analyst state (both may differ on restore).
 
 import type { DayCheckpoint } from '../engine/api.ts';
 import { dayStartMs, type DayIndex, type SimMs } from '../engine/time.ts';
