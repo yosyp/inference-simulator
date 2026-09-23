@@ -27,7 +27,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | U6 Chrome and sidebar | merged | main | `pnpm e2e` now exercises every tab, modal, play, toggle, drawer, reset. X1 swaps `createAppScenarios`/`createAppStore` and the `SlotPlaceholder`s in App.tsx, and keeps one of the two clocks (toolbar vs timeline). Tooltip fixed (no open on click-focus). Toolbar token 78 px. X3: intro says 'Calibrated on…' while calibration is provisional. |
 | U7 High side | merged | main | `RollupTable` mounted; `useDeliveredRollup`; cross-surface consistency test (charts, table, timeline). X3 polish: DailyBars says 'Arrives …' for a due-but-uncomputed day (table says 'Computing…'); timeline ticks mark arrival time regardless of computation. The failed-replica drop in requests served needs real engine data to show. |
 | U8 Results index | merged | main | `createResultsStore(replicas)`; whole-week chart redraw ~30 ms for 72 queries; detail memory unbounded by default (~3 MB per 10-min Server B window; `maxDetailChunks` if needed). X1: pass `createResults: createResultsStore`. |
-| C1 Runner | running | | |
+| C1 Runner | merged | main | `runScenarioDay` + lesson helpers in `src/scenarios/testing/`; `pnpm sim <tab|all> [--patch k=v] [--until HH:MM] [--window MIN] [--json]` |
 | C2 Tabs 1–3 | running | | Split per tab: C2a (tab 1), C2b (tab 2), C2c (tab 3) |
 | C3 Tabs 4–6 | running | | Split per tab: C3a (tab 4), C3b (tab 5), C3c (tab 6) |
 | B1 Harness | merged | main | `uv run harness plan all` prints R0–R8; ~3.9 h wall, ~4.2 GPU-h (±50%). vLLM 0.20.1 in the optional `engine` group. |
