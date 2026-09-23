@@ -45,14 +45,19 @@ export const PRIORITY = {
 
 /**
  * Shared request-lifecycle topics (02 §3). Subscribers run synchronously, in module order, when a
- * module calls ctx.notify(topic, a, b). Payloads are two numbers.
+ * module calls ctx.notify(topic, a, b). Payloads are two numbers; request topics pass the
+ * RequestSlot (src/engine/shared/requests.ts), not the day-local id.
+ *
+ * Timing: metrics (E9) buckets each notice at the time it is sent, so send firstToken at
+ * firstTokenMs and requestEnded at endMs (event handlers at those times do this naturally), and
+ * never send a lifecycle notice from onBucketEnd: it would land in the bucket that is closing.
  */
 export const TOPIC = {
-  /** A request produced its first output token. a = RequestId, b = ReplicaId. Emitted by E5. */
+  /** A request produced its first output token. a = RequestSlot, b = ReplicaId. Emitted by E5 at firstTokenMs. */
   firstToken: 1,
   /**
    * A request reached its outcome; emitted once per request by the module that ends it.
-   * a = RequestId, b = OUTCOME code from results.ts (finished, rejected, timedOut, failed).
+   * a = RequestSlot, b = OUTCOME code from results.ts (finished, rejected, timedOut, failed). Sent at endMs.
    */
   requestEnded: 2,
   /** A replica changed state. a = ReplicaId, b = REPLICA_STATE code from results.ts. Emitted by E8. */
@@ -74,6 +79,10 @@ export const TOPIC = {
    * emits requestEnded with OUTCOME.timedOut.
    */
   requestCancelled: 6,
-  /** A request changed REQUEST_STATE. a = RequestSlot, b = new state. Emitted by the module that changed it (E7, E5); E9 records transitions. */
+  /**
+   * A request changed REQUEST_STATE. a = RequestSlot, b = new state. Emitted by the module that
+   * changed it (E7, E5); E9 records transitions. E9 writes the atRouter row (at requestArrived) and
+   * the terminal row (at requestEnded) itself, so notices for those states are optional.
+   */
   requestState: 7,
 } as const;
