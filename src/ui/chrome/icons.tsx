@@ -91,3 +91,20 @@ export function ChevronIcon({ open }: { open: boolean }) {
     </Icon>
   );
 }
+
+export function MoonIcon() {
+  return (
+    <Icon>
+      <path d="M9.8 7.6A4.2 4.2 0 0 1 4.4 2.2a4.2 4.2 0 1 0 5.4 5.4z" />
+    </Icon>
+  );
+}
+
+export function SunIcon() {
+  return (
+    <Icon>
+      <circle cx="6" cy="6" r="2.2" />
+      <path d="M6 .8v1.2M6 10v1.2M.8 6h1.2M10 6h1.2M2.3 2.3l.9.9M8.8 8.8l.9.9M2.3 9.7l.9-.9M8.8 3.2l.9-.9" />
+    </Icon>
+  );
+}

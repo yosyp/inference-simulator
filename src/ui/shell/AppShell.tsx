@@ -17,6 +17,8 @@ export interface AppShellProps {
   timeline: ReactNode;
   /** Tab text, live status, rollup table, footnote (U6). */
   sidebar: ReactNode;
+  /** Overlaid at the top right of the sidebar, on its header row: About, shortcuts, theme. */
+  sidebarActions?: ReactNode;
   /** Sets data-mode on the shell and marks the High-side view with a top rule. */
   mode?: Mode;
   /** Accessible name of the sidebar landmark. */
@@ -36,6 +38,7 @@ export function AppShell({
   charts,
   timeline,
   sidebar,
+  sidebarActions,
   mode = 'live',
   sidebarLabel = 'About this tab',
 }: AppShellProps) {
@@ -88,8 +91,13 @@ export function AppShell({
         <aside
           aria-label={sidebarLabel}
           data-slot="sidebar"
-          className="min-h-0 min-w-0 overflow-y-auto border-l border-border bg-surface"
+          className="relative min-h-0 min-w-0 overflow-y-auto border-l border-border bg-surface"
         >
+          {sidebarActions && (
+            <div data-slot="sidebar-actions" className="absolute top-1.5 right-3 z-10">
+              {sidebarActions}
+            </div>
+          )}
           {sidebar}
         </aside>
       </div>

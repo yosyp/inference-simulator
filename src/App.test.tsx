@@ -101,4 +101,57 @@ describe('App', () => {
     fireEvent.keyUp(load, { key: 'ArrowRight' });
     expect(state().forks.map((f) => f.label)).toEqual(['Load: 1.2×']);
   });
+
+  it('runs keyboard shortcuts, but not behind another modal or while typing', async () => {
+    const { user, state } = setup();
+    // The intro is open: shortcuts are off.
+    await user.keyboard(']');
+    expect(state().scenarioId).toBe('long-prompt');
+    await dismissIntro(user);
+
+    await user.keyboard('?');
+    expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+    await user.keyboard(']'); // Only ? and Escape work in the help.
+    expect(state().scenarioId).toBe('long-prompt');
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    await user.keyboard(']');
+    expect(state().scenarioId).not.toBe('long-prompt');
+    await user.keyboard('1');
+    expect(state().scenarioId).toBe('long-prompt');
+    await user.keyboard('h');
+    expect(state().mode).toBe('highSide');
+    await user.keyboard('h');
+    const speed = state().speed;
+    await user.keyboard('=');
+    expect(state().speed).toBeGreaterThan(speed);
+    await user.keyboard('-');
+    expect(state().speed).toBe(speed);
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    await user.keyboard(' ');
+    expect(state().playing).toBe(true);
+    await user.keyboard(' ');
+    expect(state().playing).toBe(false);
+
+    await user.keyboard('t');
+    expect(state().forks).toHaveLength(1);
+
+    await user.keyboard('p');
+    const load = await screen.findByRole('slider', { name: /load/i });
+    load.focus();
+    await user.keyboard('r'); // Typing in a field: ignored.
+    expect(state().forks).toHaveLength(1);
+    load.blur();
+    await user.keyboard('r');
+    expect(state().forks).toHaveLength(0);
+
+    await user.keyboard('d');
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    await user.click(screen.getByRole('button', { name: 'Dark theme' }));
+    expect(document.documentElement.dataset.theme).toBe('light');
+    await user.click(screen.getByRole('button', { name: 'Keyboard shortcuts (?)' }));
+    expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+  });
 });

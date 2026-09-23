@@ -14,10 +14,15 @@ export const PARAMETERS_DRAWER_ID = 'parameters-drawer';
 export interface ControlPanelProps {
   store: PlaybackStore;
   run: ScenarioRun;
+  /** Controls the parameters drawer (the `p` shortcut). Omit both to let the panel own it. */
+  drawerOpen?: boolean;
+  onDrawerOpenChange?: (open: boolean) => void;
 }
 
-export function ControlPanel({ store, run }: ControlPanelProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+export function ControlPanel({ store, run, ...controlled }: ControlPanelProps) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const drawerOpen = controlled.drawerOpen ?? ownOpen;
+  const setDrawerOpen = controlled.onDrawerOpenChange ?? setOwnOpen;
   const { scenario } = run;
   const params = useParamsInEffect(store, scenario, run.applied);
   return (
@@ -30,7 +35,7 @@ export function ControlPanel({ store, run }: ControlPanelProps) {
         drawer={{
           id: PARAMETERS_DRAWER_ID,
           open: drawerOpen,
-          onToggle: () => setDrawerOpen((o) => !o),
+          onToggle: () => setDrawerOpen(!drawerOpen),
         }}
       />
       <ParametersDrawer
