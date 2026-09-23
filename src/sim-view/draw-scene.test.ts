@@ -557,7 +557,7 @@ describe('drawScene: High side', () => {
 });
 
 describe('drawScene: router box text', () => {
-  type TextOp = Extract<DrawOp, { op: 'fillText' }>;
+  type TextOp = Extract<DrawOp, { text: string }>;
   const fontPx = (font: string) => Number(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? 10);
   // Mirrors the recording context's measureText: 0.6 em per character.
   const width = (o: TextOp) => o.text.length * fontPx(o.font) * 0.6;
