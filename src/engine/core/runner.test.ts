@@ -4,7 +4,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DayRunInput, Patch, SimConfig } from '../api.ts';
 import type { Calibration } from '../calibration.ts';
-import { HISTOGRAM_SPECS } from '../histogram.ts';
 import { DAY_MS, HOUR_MS, dayStartMs, type DayIndex } from '../time.ts';
 import { PRIORITY, TOPIC } from './ids.ts';
 import { NO_EVENT } from './queue.ts';
@@ -310,7 +309,8 @@ describe('stub chunk producer', () => {
     expect([c1.scalars.startMs, c1.scalars.count, c1.scalars.series]).toEqual([START, 9, 4]);
     expect(c1.scalars.data.kvUsedFrac).toHaveLength(9 * 4);
     expect([c1.histograms.startMs, c1.histograms.count]).toEqual([START, 1]);
-    expect(c1.histograms.data.ttft).toHaveLength(1 * 4 * HISTOGRAM_SPECS.ttft.bins);
+    expect(c1.histograms.data.ttft.offsets).toHaveLength(1 * 4 + 1);
+    expect(c1.histograms.data.ttft.counts).toHaveLength(0);
     expect([c1.requests.scope, c1.requests.count, c1.transitions.count]).toEqual(['tracked', 0, 0]);
     expect(c1.replicaEvents).toEqual([]);
     const c2 = run.advance(START + 125_000);

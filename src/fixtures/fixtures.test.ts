@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HISTOGRAM_SPECS, quantile } from '../engine/histogram.ts';
+import { HISTOGRAM_SPECS, addSparseCellInto, quantile } from '../engine/histogram.ts';
 import {
   FLEET_SERIES,
   REPLICA_STATE,
@@ -24,19 +24,16 @@ describe('fixture chunks', () => {
       expect(scalars.data[m].length).toBe(scalars.count * scalars.series);
     }
     expect(histograms.count).toBe((60 * 60_000) / FIXTURE_HIST_BUCKET_MS);
-    expect(histograms.data.ttft.length).toBe(
-      histograms.count * histograms.series * HISTOGRAM_SPECS.ttft.bins,
-    );
+    const ttft = histograms.data.ttft;
+    expect(ttft.offsets.length).toBe(histograms.count * histograms.series + 1);
+    expect(ttft.bins.length).toBe(ttft.counts.length);
+    expect(ttft.offsets[ttft.offsets.length - 1]).toBe(ttft.counts.length);
   });
 
   it('has a plausible fleet TTFT p99', () => {
-    const bins = HISTOGRAM_SPECS.ttft.bins;
-    const p99 = quantile(
-      HISTOGRAM_SPECS.ttft,
-      chunk.histograms.data.ttft,
-      FLEET_SERIES * bins,
-      0.99,
-    );
+    const dense = new Uint32Array(HISTOGRAM_SPECS.ttft.bins);
+    addSparseCellInto(dense, 0, chunk.histograms.data.ttft, FLEET_SERIES);
+    const p99 = quantile(HISTOGRAM_SPECS.ttft, dense, 0, 0.99);
     expect(p99).toBeGreaterThan(50);
     expect(p99).toBeLessThan(60_000);
   });

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   HISTOGRAM_SPECS,
+  addSparseCellInto,
+  sparseCellCount,
+  sparseFromDense,
   binIndex,
   binLowerMs,
   mergeInto,
@@ -56,5 +59,20 @@ describe('histogram', () => {
 
   it('returns NaN for an empty histogram', () => {
     expect(quantile(spec, new Uint32Array(spec.bins), 0, 0.99)).toBeNaN();
+  });
+
+  it('round-trips dense counts through the sparse form, cell by cell', () => {
+    const bins = spec.bins;
+    const cells = 3;
+    const dense = new Uint32Array(cells * bins);
+    dense[5] = 2;
+    dense[bins + 7] = 1;
+    dense[bins + 150] = 4;
+    const sparse = sparseFromDense(dense, cells, bins);
+    expect(sparse.counts.length).toBe(3);
+    expect([0, 1, 2].map((c) => sparseCellCount(sparse, c))).toEqual([2, 5, 0]);
+    const back = new Uint32Array(cells * bins);
+    for (let c = 0; c < cells; c++) addSparseCellInto(back, c * bins, sparse, c);
+    expect(back).toEqual(dense);
   });
 });

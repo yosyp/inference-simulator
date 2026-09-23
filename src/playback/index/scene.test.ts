@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HISTOGRAM_SPECS, quantile } from '../../engine/histogram.ts';
+import { HISTOGRAM_SPECS, quantile, addSparseCellInto } from '../../engine/histogram.ts';
 import {
   FLEET_SERIES,
   REPLICA_STATE,
@@ -270,10 +270,9 @@ describe('sceneAt and statusAt from fixture chunks', () => {
 
     const h = chunks.find((x) => x.fromMs <= t && t < x.toMs)!.histograms;
     const hi = Math.floor((t - h.startMs) / h.bucketMs);
-    const bins = HISTOGRAM_SPECS.ttft.bins;
-    expect(status.fleet.ttftP99Ms).toBe(
-      quantile(HISTOGRAM_SPECS.ttft, h.data.ttft, (hi * h.series + FLEET_SERIES) * bins, 0.99),
-    );
+    const dense = new Uint32Array(HISTOGRAM_SPECS.ttft.bins);
+    addSparseCellInto(dense, 0, h.data.ttft, hi * h.series + FLEET_SERIES);
+    expect(status.fleet.ttftP99Ms).toBe(quantile(HISTOGRAM_SPECS.ttft, dense, 0, 0.99));
   });
 
   it('takes replica states and loading progress from replica events', () => {

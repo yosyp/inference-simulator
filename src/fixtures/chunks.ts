@@ -6,7 +6,8 @@ import {
   OUTCOME,
   REPLICA_STATE,
   REQUEST_STATE,
-  allocHistogramBlock,
+  allocDenseHistograms,
+  histogramBlockFromDense,
   allocRequestBlock,
   allocScalarBlock,
   allocTransitionBlock,
@@ -34,7 +35,7 @@ export function makeFixtureChunk(opts: FixtureOptions, fromMs: SimMs, toMs: SimM
   const nScalar = (toMs - fromMs) / FIXTURE_BUCKET_MS;
   const nHist = (toMs - fromMs) / FIXTURE_HIST_BUCKET_MS;
   const scalars = allocScalarBlock(fromMs, FIXTURE_BUCKET_MS, nScalar, series);
-  const histograms = allocHistogramBlock(fromMs, FIXTURE_HIST_BUCKET_MS, nHist, series);
+  const dense = allocDenseHistograms(nHist, series);
   const d = scalars.data;
   const bucketS = FIXTURE_BUCKET_MS / 1000;
 
@@ -111,12 +112,14 @@ export function makeFixtureChunk(opts: FixtureOptions, fromMs: SimMs, toMs: SimM
         for (let k = 0; k < n; k++) {
           const v = median * Math.exp(sigma * normal(b * 1000 + k, r * 7 + bins));
           const bin = binIndex(HISTOGRAM_SPECS[metric], v);
-          histograms.data[metric][(b * series + replicaSeries(r)) * bins + bin]! += 1;
-          histograms.data[metric][(b * series + FLEET_SERIES) * bins + bin]! += 1;
+          dense[metric][(b * series + replicaSeries(r)) * bins + bin]! += 1;
+          dense[metric][(b * series + FLEET_SERIES) * bins + bin]! += 1;
         }
       }
     }
   }
+
+  const histograms = histogramBlockFromDense(fromMs, FIXTURE_HIST_BUCKET_MS, nHist, series, dense);
 
   // The tracked analyst's requests that finish in this chunk, with their transitions.
   const trackedStarts: number[] = [];

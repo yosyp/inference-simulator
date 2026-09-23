@@ -3,7 +3,7 @@
 
 import {
   HISTOGRAM_SPECS,
-  mergeInto,
+  addSparseCellInto,
   quantile,
   totalCount,
   type HistogramMetric,
@@ -111,35 +111,24 @@ export function quantileSeries(
   const scratch = new Uint32Array(bins);
   const perPoint = stepMs / bucketMs;
   let present = 0;
-  let first: Uint32Array = scratch;
-  let firstOffset = 0;
   const visit = (block: HistogramBlock, bucket: number, count: number) => {
     if (series < 0 || series >= block.series) return;
     const data = block.data[metric];
-    const stride = block.series * bins;
-    let offset = (bucket * block.series + series) * bins;
-    for (let k = 0; k < count; k++, offset += stride) {
-      if (present === 0) {
-        first = data;
-        firstOffset = offset;
-      } else {
-        if (present === 1) for (let b = 0; b < bins; b++) scratch[b] = first[firstOffset + b]!;
-        mergeInto(scratch, 0, data, offset, bins);
-      }
+    let cell = bucket * block.series + series;
+    for (let k = 0; k < count; k++, cell += block.series) {
+      addSparseCellInto(scratch, 0, data, cell);
       present++;
     }
   };
   let g = t0 / bucketMs;
   for (let i = 0; i < n; i++, g += perPoint) {
     present = 0;
+    scratch.fill(0);
     forEachRun(index, g, g + perPoint, visit);
     if (present === 0) continue;
-    // A single bucket is read in place; only merges use the scratch histogram.
-    const hist = present === 1 ? first : scratch;
-    const offset = present === 1 ? firstOffset : 0;
-    counts[i] = totalCount(hist, offset, bins);
+    counts[i] = totalCount(scratch, 0, bins);
     for (let q = 0; q < quantiles.length; q++) {
-      values[q]![i] = quantile(spec, hist, offset, quantiles[q]!);
+      values[q]![i] = quantile(spec, scratch, 0, quantiles[q]!);
     }
   }
   return { t, stepMs, values, counts };

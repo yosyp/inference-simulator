@@ -2,7 +2,7 @@
 // from the scalar bucket containing t; rates from the minute of buckets ending with it.
 
 import type { AnalystId } from '../../engine/api.ts';
-import { HISTOGRAM_SPECS, quantile } from '../../engine/histogram.ts';
+import { HISTOGRAM_SPECS, addSparseCellInto, quantile } from '../../engine/histogram.ts';
 import {
   FLEET_SERIES,
   REPLICA_STATE,
@@ -160,8 +160,14 @@ function ttftP99At(hist: SlotIndex<HistogramBlock>, t: SimMs): number {
   const e = entryAt(hist, g);
   if (!e) return NaN;
   const spec = HISTOGRAM_SPECS.ttft;
-  const offset = (bucketIn(hist, e, g) * e.block.series + FLEET_SERIES) * spec.bins;
-  return quantile(spec, e.block.data.ttft, offset, 0.99);
+  const scratch = new Uint32Array(spec.bins);
+  addSparseCellInto(
+    scratch,
+    0,
+    e.block.data.ttft,
+    bucketIn(hist, e, g) * e.block.series + FLEET_SERIES,
+  );
+  return quantile(spec, scratch, 0, 0.99);
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   quantile,
   totalCount,
   type HistogramMetric,
+  addSparseCellInto,
 } from '../../engine/histogram.ts';
 import {
   FLEET_SERIES,
@@ -63,8 +64,7 @@ function directHistogram(metric: HistogramMetric, series: number, t: number, ste
       const start = h.startMs + i * h.bucketMs;
       if (start < t || start >= t + step) continue;
       buckets++;
-      const offset = (i * h.series + series) * bins;
-      for (let k = 0; k < bins; k++) merged[k]! += h.data[metric][offset + k]!;
+      addSparseCellInto(merged, 0, h.data[metric], i * h.series + series);
     }
   }
   return { merged, buckets };

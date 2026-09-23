@@ -2,7 +2,13 @@
 // Columnar typed arrays throughout (K7) so chunks transfer between worker and main thread without copying.
 
 import type { ReplicaId } from './api.ts';
-import { HISTOGRAM_SPECS, type HistogramMetric } from './histogram.ts';
+import {
+  HISTOGRAM_SPECS,
+  emptySparse,
+  sparseFromDense,
+  type HistogramMetric,
+  type SparseHistograms,
+} from './histogram.ts';
 import type { DayIndex, SimMs } from './time.ts';
 
 /** Series index: 0 is the fleet, r + 1 is replica r. */
@@ -69,13 +75,16 @@ export interface ScalarBlock {
   data: Record<ScalarMetric, Float32Array>;
 }
 
-/** Histogram buckets of width histBucketMs. Index: (bucket * series + seriesIndex) * bins + bin. */
+/**
+ * Histogram buckets of width histBucketMs, sparse per K29. Cell = bucket * series + seriesIndex;
+ * see SparseHistograms in histogram.ts.
+ */
 export interface HistogramBlock {
   startMs: SimMs;
   bucketMs: number;
   count: number;
   series: number;
-  data: Record<HistogramMetric, Uint32Array>;
+  data: Record<HistogramMetric, SparseHistograms>;
 }
 
 export const REQUEST_STATE = {
@@ -200,15 +209,43 @@ export function allocScalarBlock(
   return { startMs, bucketMs, count, series, data };
 }
 
+/** An empty (all-zero) histogram block. */
 export function allocHistogramBlock(
   startMs: SimMs,
   bucketMs: number,
   count: number,
   series: number,
 ): HistogramBlock {
+  const data = {} as Record<HistogramMetric, SparseHistograms>;
+  for (const m of Object.keys(HISTOGRAM_SPECS) as HistogramMetric[]) {
+    data[m] = emptySparse(count * series);
+  }
+  return { startMs, bucketMs, count, series, data };
+}
+
+/** Dense scratch counts for building a block: (bucket * series + seriesIndex) * bins + bin. */
+export function allocDenseHistograms(
+  count: number,
+  series: number,
+): Record<HistogramMetric, Uint32Array> {
   const data = {} as Record<HistogramMetric, Uint32Array>;
   for (const m of Object.keys(HISTOGRAM_SPECS) as HistogramMetric[]) {
     data[m] = new Uint32Array(count * series * HISTOGRAM_SPECS[m].bins);
+  }
+  return data;
+}
+
+/** Converts dense scratch counts (allocDenseHistograms layout) into a sparse HistogramBlock. */
+export function histogramBlockFromDense(
+  startMs: SimMs,
+  bucketMs: number,
+  count: number,
+  series: number,
+  dense: Record<HistogramMetric, Uint32Array>,
+): HistogramBlock {
+  const data = {} as Record<HistogramMetric, SparseHistograms>;
+  for (const m of Object.keys(HISTOGRAM_SPECS) as HistogramMetric[]) {
+    data[m] = sparseFromDense(dense[m], count * series, HISTOGRAM_SPECS[m].bins);
   }
   return { startMs, bucketMs, count, series, data };
 }
@@ -255,7 +292,11 @@ export function chunkTransferables(chunk: ResultChunk): ArrayBuffer[] {
     if (a.buffer instanceof ArrayBuffer) buffers.add(a.buffer);
   };
   for (const a of Object.values(chunk.scalars.data)) add(a);
-  for (const a of Object.values(chunk.histograms.data)) add(a);
+  for (const h of Object.values(chunk.histograms.data)) {
+    add(h.offsets);
+    add(h.bins);
+    add(h.counts);
+  }
   for (const block of [chunk.requests, chunk.transitions]) {
     for (const v of Object.values(block)) {
       if (ArrayBuffer.isView(v)) add(v);
