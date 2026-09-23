@@ -1,0 +1,316 @@
+1790193156.570 # harness process_start gpu=0 label=main
+1790193161.581 (APIServer pid=2792887) INFO 09-23 19:52:41 [utils.py:299] 
+1790193161.581 (APIServer pid=2792887) INFO 09-23 19:52:41 [utils.py:299]        █     █     █▄   ▄█
+1790193161.581 (APIServer pid=2792887) INFO 09-23 19:52:41 [utils.py:299]  ▄▄ ▄█ █     █     █ ▀▄▀ █  version 0.20.1
+1790193161.581 (APIServer pid=2792887) INFO 09-23 19:52:41 [utils.py:299]   █▄█▀ █     █     █     █  model   meta-llama/Llama-3.1-8B-Instruct
+1790193161.581 (APIServer pid=2792887) INFO 09-23 19:52:41 [utils.py:299]    ▀▀  ▀▀▀▀▀ ▀▀▀▀▀ ▀     ▀
+1790193161.581 (APIServer pid=2792887) INFO 09-23 19:52:41 [utils.py:299] 
+1790193161.586 (APIServer pid=2792887) INFO 09-23 19:52:41 [utils.py:233] non-default args: {'model_tag': 'meta-llama/Llama-3.1-8B-Instruct', 'host': '127.0.0.1', 'port': 8001, 'disable_uvicorn_access_log': True, 'model': 'meta-llama/Llama-3.1-8B-Instruct', 'dtype': 'float16', 'max_model_len': 131072, 'gpu_memory_utilization': 0.9, 'enable_prefix_caching': True, 'enable_chunked_prefill': True}
+1790193161.586 (APIServer pid=2792887) INFO 09-23 19:52:41 [arg_utils.py:718] HF_HUB_OFFLINE is True, replace model_id [meta-llama/Llama-3.1-8B-Instruct] to model_path [~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659]
+1790193161.594 (APIServer pid=2792887) INFO 09-23 19:52:41 [model.py:555] Resolved architecture: LlamaForCausalLM
+1790193161.594 (APIServer pid=2792887) WARNING 09-23 19:52:41 [model.py:2018] Casting torch.bfloat16 to torch.float16.
+1790193161.594 (APIServer pid=2792887) INFO 09-23 19:52:41 [model.py:1680] Using max model len 131072
+1790193161.595 (APIServer pid=2792887) INFO 09-23 19:52:41 [vllm.py:840] Asynchronous scheduling is enabled.
+1790193161.595 (APIServer pid=2792887) INFO 09-23 19:52:41 [kernel.py:205] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'])
+1790193167.311 (EngineCore pid=2793855) INFO 09-23 19:52:47 [core.py:109] Initializing a V1 LLM engine (v0.20.1) with config: model='~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659', speculative_config=None, tokenizer='~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.float16, max_seq_len=131072, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=0, served_model_name=~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::gdn_attention_core', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'size_asserts': False, 'alignment_asserts': False, 'scalar_asserts': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native']), enable_flashinfer_autotune=True, moe_backend='auto')
+1790193168.290 (EngineCore pid=2793855) INFO 09-23 19:52:48 [nixl_utils.py:20] Setting UCX_RCACHE_MAX_UNRELEASED to '1024' to avoid a rare memory leak in UCX when using NIXL.
+1790193168.290 (EngineCore pid=2793855) WARNING 09-23 19:52:48 [nixl_utils.py:34] NIXL is not available
+1790193168.290 (EngineCore pid=2793855) WARNING 09-23 19:52:48 [nixl_utils.py:44] NIXL agent config is not available
+1790193168.493 (EngineCore pid=2793855) INFO 09-23 19:52:48 [parallel_state.py:1402] world_size=1 rank=0 local_rank=0 distributed_init_method=tcp://<ip>:54473 backend=nccl
+1790193168.802 (EngineCore pid=2793855) INFO 09-23 19:52:48 [parallel_state.py:1715] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, EP rank N/A, EPLB rank N/A
+1790193169.265 (EngineCore pid=2793855) INFO 09-23 19:52:49 [gpu_model_runner.py:4777] Starting to load model ~/.cache/huggingface/hub/models--meta-llama--Llama-3.1-8B-Instruct/snapshots/0e9e39f249a16976918f6564b8830bc894c89659...
+1790193169.983 (EngineCore pid=2793855) INFO 09-23 19:52:49 [cuda.py:368] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+1790193169.983 (EngineCore pid=2793855) INFO 09-23 19:52:49 [flash_attn.py:646] Using FlashAttention version 2
+1790193170.167 (EngineCore pid=2793855) INFO 09-23 19:52:50 [weight_utils.py:904] Filesystem type for checkpoints: EXT4. Checkpoint size: 14.96 GiB. Available RAM: 976.95 GiB.
+1790193170.167 (EngineCore pid=2793855) INFO 09-23 19:52:50 [weight_utils.py:927] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+1790193170.168 (EngineCore pid=2793855) 
+1790193170.168 Loading safetensors checkpoint shards:   0% Completed | 0/4 [00:00<?, ?it/s]
+1790193171.249 (EngineCore pid=2793855) 
+1790193171.249 Loading safetensors checkpoint shards:  25% Completed | 1/4 [00:01<00:03,  1.08s/it]
+1790193172.482 (EngineCore pid=2793855) 
+1790193172.482 Loading safetensors checkpoint shards:  50% Completed | 2/4 [00:02<00:02,  1.17s/it]
+1790193173.676 (EngineCore pid=2793855) 
+1790193173.676 Loading safetensors checkpoint shards:  75% Completed | 3/4 [00:03<00:01,  1.18s/it]
+1790193174.052 (EngineCore pid=2793855) 
+1790193174.052 Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:03<00:00,  1.16it/s]
+1790193174.053 (EngineCore pid=2793855) 
+1790193174.053 Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:03<00:00,  1.03it/s]
+1790193174.053 (EngineCore pid=2793855) 
+1790193174.090 (EngineCore pid=2793855) INFO 09-23 19:52:54 [default_loader.py:384] Loading weights took 3.92 seconds
+1790193174.523 (EngineCore pid=2793855) INFO 09-23 19:52:54 [gpu_model_runner.py:4879] Model loading took 14.99 GiB memory and 4.651613 seconds
+1790193176.840 (EngineCore pid=2793855) INFO 09-23 19:52:56 [backends.py:1069] Using cache directory: ~/.cache/vllm/torch_compile_cache/edd02998e5/rank_0_0/backbone for vLLM's torch.compile
+1790193176.840 (EngineCore pid=2793855) INFO 09-23 19:52:56 [backends.py:1128] Dynamo bytecode transform time: 2.10 s
+1790193177.986 (EngineCore pid=2793855) INFO 09-23 19:52:57 [backends.py:290] Directly load the compiled graph(s) for compile range (1, 2048) from the cache, took 0.679 s
+1790193177.993 (EngineCore pid=2793855) INFO 09-23 19:52:57 [decorators.py:305] Directly load AOT compilation from path ~/.cache/vllm/torch_compile_cache/torch_aot_compile/934ae7e519389db20459e0eefa97cd90a9b07d3109c24c7f1456b9d7784cbdc6/rank_0_0/model
+1790193177.993 (EngineCore pid=2793855) INFO 09-23 19:52:57 [monitor.py:53] torch.compile took 3.25 s in total
+1790193178.130 (EngineCore pid=2793855) INFO 09-23 19:52:58 [monitor.py:81] Initial profiling/warmup run took 0.14 s
+1790193178.658 (EngineCore pid=2793855) INFO 09-23 19:52:58 [gpu_model_runner.py:5963] Profiling CUDA graph memory: PIECEWISE=51 (largest=512), FULL=35 (largest=256)
+1790193179.580 (EngineCore pid=2793855) INFO 09-23 19:52:59 [gpu_model_runner.py:6042] Estimated CUDA graph memory: 0.53 GiB total
+1790193179.818 (EngineCore pid=2793855) INFO 09-23 19:52:59 [gpu_worker.py:440] Available KV cache memory: 19.39 GiB
+1790193179.819 (EngineCore pid=2793855) INFO 09-23 19:52:59 [gpu_worker.py:455] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9000 is equivalent to --gpu-memory-utilization=0.8867 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9133. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+1790193179.819 (EngineCore pid=2793855) INFO 09-23 19:52:59 [kv_cache_utils.py:1708] GPU KV cache size: 158,864 tokens
+1790193179.819 (EngineCore pid=2793855) INFO 09-23 19:52:59 [kv_cache_utils.py:1709] Maximum concurrency for 131,072 tokens per request: 1.21x
+1790193180.067 (EngineCore pid=2793855) 
+1790193180.180 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   0%|          | 0/51 [00:00<?, ?it/s]
+1790193180.293 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   4%|▍         | 2/51 [00:00<00:02, 17.83it/s]
+1790193180.404 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):   8%|▊         | 4/51 [00:00<00:02, 17.72it/s]
+1790193180.515 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  12%|█▏        | 6/51 [00:00<00:02, 17.87it/s]
+1790193180.660 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  16%|█▌        | 8/51 [00:00<00:02, 17.94it/s]
+1790193180.806 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  22%|██▏       | 11/51 [00:00<00:02, 19.06it/s]
+1790193180.945 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  27%|██▋       | 14/51 [00:00<00:01, 19.65it/s]
+1790193181.066 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  33%|███▎      | 17/51 [00:00<00:01, 20.29it/s]
+1790193181.187 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  39%|███▉      | 20/51 [00:00<00:01, 21.64it/s]
+1790193181.306 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  45%|████▌     | 23/51 [00:01<00:01, 22.59it/s]
+1790193181.426 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  51%|█████     | 26/51 [00:01<00:01, 23.32it/s]
+1790193181.545 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  57%|█████▋    | 29/51 [00:01<00:00, 23.84it/s]
+1790193181.652 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  63%|██████▎   | 32/51 [00:01<00:00, 24.25it/s]
+1790193181.755 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  69%|██████▊   | 35/51 [00:01<00:00, 25.34it/s]
+1790193181.856 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  75%|███████▍  | 38/51 [00:01<00:00, 26.33it/s]
+1790193181.965 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  80%|████████  | 41/51 [00:01<00:00, 27.25it/s]
+1790193182.095 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  86%|████████▋ | 44/51 [00:01<00:00, 27.34it/s]
+1790193182.199 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE):  94%|█████████▍| 48/51 [00:02<00:00, 28.50it/s]
+1790193182.200 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 51/51 [00:02<00:00, 28.58it/s]
+1790193182.200 Capturing CUDA graphs (mixed prefill-decode, PIECEWISE): 100%|██████████| 51/51 [00:02<00:00, 23.92it/s]
+1790193182.200 (EngineCore pid=2793855) 
+1790193182.319 Capturing CUDA graphs (decode, FULL):   0%|          | 0/35 [00:00<?, ?it/s]
+1790193182.435 Capturing CUDA graphs (decode, FULL):   9%|▊         | 3/35 [00:00<00:01, 25.18it/s]
+1790193182.548 Capturing CUDA graphs (decode, FULL):  17%|█▋        | 6/35 [00:00<00:01, 25.52it/s]
+1790193182.661 Capturing CUDA graphs (decode, FULL):  26%|██▌       | 9/35 [00:00<00:00, 26.07it/s]
+1790193182.770 Capturing CUDA graphs (decode, FULL):  34%|███▍      | 12/35 [00:00<00:00, 26.21it/s]
+1790193182.900 Capturing CUDA graphs (decode, FULL):  43%|████▎     | 15/35 [00:00<00:00, 26.70it/s]
+1790193183.023 Capturing CUDA graphs (decode, FULL):  54%|█████▍    | 19/35 [00:00<00:00, 28.17it/s]
+1790193183.140 Capturing CUDA graphs (decode, FULL):  66%|██████▌   | 23/35 [00:00<00:00, 29.61it/s]
+1790193183.253 Capturing CUDA graphs (decode, FULL):  77%|███████▋  | 27/35 [00:00<00:00, 31.12it/s]
+1790193183.362 Capturing CUDA graphs (decode, FULL):  89%|████████▊ | 31/35 [00:01<00:00, 32.42it/s]
+1790193183.362 Capturing CUDA graphs (decode, FULL): 100%|██████████| 35/35 [00:01<00:00, 33.66it/s]
+1790193183.362 Capturing CUDA graphs (decode, FULL): 100%|██████████| 35/35 [00:01<00:00, 30.12it/s]
+1790193183.615 (EngineCore pid=2793855) INFO 09-23 19:53:03 [gpu_model_runner.py:6133] Graph capturing finished in 4 secs, took 0.48 GiB
+1790193183.615 (EngineCore pid=2793855) INFO 09-23 19:53:03 [gpu_worker.py:599] CUDA graph pool memory: 0.48 GiB (actual), 0.53 GiB (estimated), difference: 0.05 GiB (10.2%).
+1790193183.626 (EngineCore pid=2793855) INFO 09-23 19:53:03 [core.py:299] init engine (profile, create kv cache, warmup model) took 9.10 s (compilation: 3.25 s)
+1790193184.265 (EngineCore pid=2793855) INFO 09-23 19:53:04 [vllm.py:840] Asynchronous scheduling is enabled.
+1790193184.265 (EngineCore pid=2793855) INFO 09-23 19:53:04 [kernel.py:205] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'])
+1790193184.274 (APIServer pid=2792887) INFO 09-23 19:53:04 [api_server.py:598] Supported tasks: ['generate']
+1790193184.274 (APIServer pid=2792887) WARNING 09-23 19:53:04 [__init__.py:14] SECURITY WARNING: Development endpoints are enabled! This should NOT be used in production!
+1790193184.397 (APIServer pid=2792887) WARNING 09-23 19:53:04 [model.py:1437] Default vLLM sampling parameters have been overridden by the model's `generation_config.json`: `{'temperature': 0.6, 'top_p': 0.9}`. If this is not intended, please relaunch vLLM instance with `--generation-config vllm`.
+1790193184.887 (APIServer pid=2792887) INFO 09-23 19:53:04 [hf.py:314] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+1790193184.914 (APIServer pid=2792887) INFO 09-23 19:53:04 [api_server.py:602] Starting vLLM server on http://127.0.0.1:8001
+1790193184.914 (APIServer pid=2792887) INFO 09-23 19:53:04 [launcher.py:37] Available routes are:
+1790193184.914 (APIServer pid=2792887) INFO 09-23 19:53:04 [launcher.py:46] Route: /openapi.json, Methods: HEAD, GET
+1790193184.914 (APIServer pid=2792887) INFO 09-23 19:53:04 [launcher.py:46] Route: /docs, Methods: HEAD, GET
+1790193184.914 (APIServer pid=2792887) INFO 09-23 19:53:04 [launcher.py:46] Route: /docs/oauth2-redirect, Methods: HEAD, GET
+1790193184.914 (APIServer pid=2792887) INFO 09-23 19:53:04 [launcher.py:46] Route: /redoc, Methods: HEAD, GET
+1790193184.914 (APIServer pid=2792887) INFO 09-23 19:53:04 [launcher.py:46] Route: /metrics, Methods: GET
+1790193184.933 (APIServer pid=2792887) INFO:     Started server process [2792887]
+1790193184.933 (APIServer pid=2792887) INFO:     Waiting for application startup.
+1790193185.236 (APIServer pid=2792887) INFO:     Application startup complete.
+1790193185.728 (APIServer pid=2792887) uv is set
+1790193195.237 (APIServer pid=2792887) INFO 09-23 19:53:15 [loggers.py:271] Engine 000: Avg prompt throughput: 11.0 tokens/s, Avg generation throughput: 1.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193201.301 (APIServer pid=2792887) INFO 09-23 19:53:21 [api_router.py:39] Resetting prefix cache...
+1790193201.305 (EngineCore pid=2793855) INFO 09-23 19:53:21 [block_pool.py:471] Successfully reset prefix cache
+1790193201.309 (APIServer pid=2792887) INFO 09-23 19:53:21 [api_router.py:39] Resetting prefix cache...
+1790193201.312 (EngineCore pid=2793855) INFO 09-23 19:53:21 [block_pool.py:471] Successfully reset prefix cache
+1790193205.237 (APIServer pid=2792887) INFO 09-23 19:53:25 [loggers.py:271] Engine 000: Avg prompt throughput: 819.2 tokens/s, Avg generation throughput: 204.8 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193215.238 (APIServer pid=2792887) INFO 09-23 19:53:35 [loggers.py:271] Engine 000: Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 53.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.1%, Prefix cache hit rate: 0.0%
+1790193225.238 (APIServer pid=2792887) INFO 09-23 19:53:45 [loggers.py:271] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 77.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 0.0%
+1790193235.238 (APIServer pid=2792887) INFO 09-23 19:53:55 [loggers.py:271] Engine 000: Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 77.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.1%, Prefix cache hit rate: 0.0%
+1790193245.238 (APIServer pid=2792887) INFO 09-23 19:54:05 [loggers.py:271] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 77.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 0.0%
+1790193255.238 (APIServer pid=2792887) INFO 09-23 19:54:15 [loggers.py:271] Engine 000: Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 77.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.1%, Prefix cache hit rate: 0.0%
+1790193265.239 (APIServer pid=2792887) INFO 09-23 19:54:25 [loggers.py:271] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 77.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 0.0%
+1790193275.239 (APIServer pid=2792887) INFO 09-23 19:54:35 [loggers.py:271] Engine 000: Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 77.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.1%, Prefix cache hit rate: 0.0%
+1790193285.240 (APIServer pid=2792887) INFO 09-23 19:54:45 [loggers.py:271] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 77.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 0.0%
+1790193295.241 (APIServer pid=2792887) INFO 09-23 19:54:55 [loggers.py:271] Engine 000: Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 77.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.1%, Prefix cache hit rate: 0.0%
+1790193305.241 (APIServer pid=2792887) INFO 09-23 19:55:05 [loggers.py:271] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 77.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 0.0%
+1790193315.241 (APIServer pid=2792887) INFO 09-23 19:55:15 [loggers.py:271] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 69.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193321.452 (APIServer pid=2792887) INFO 09-23 19:55:21 [api_router.py:39] Resetting prefix cache...
+1790193321.454 (EngineCore pid=2793855) INFO 09-23 19:55:21 [block_pool.py:471] Successfully reset prefix cache
+1790193325.241 (APIServer pid=2792887) INFO 09-23 19:55:25 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193335.241 (APIServer pid=2792887) INFO 09-23 19:55:35 [loggers.py:271] Engine 000: Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 49.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 0.0%
+1790193345.242 (APIServer pid=2792887) INFO 09-23 19:55:45 [loggers.py:271] Engine 000: Avg prompt throughput: 38.4 tokens/s, Avg generation throughput: 77.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 0.0%
+1790193355.243 (APIServer pid=2792887) INFO 09-23 19:55:55 [loggers.py:271] Engine 000: Avg prompt throughput: 38.4 tokens/s, Avg generation throughput: 77.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 0.0%
+1790193365.243 (APIServer pid=2792887) INFO 09-23 19:56:05 [loggers.py:271] Engine 000: Avg prompt throughput: 38.4 tokens/s, Avg generation throughput: 77.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 0.0%
+1790193375.243 (APIServer pid=2792887) INFO 09-23 19:56:15 [loggers.py:271] Engine 000: Avg prompt throughput: 38.4 tokens/s, Avg generation throughput: 77.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 0.0%
+1790193385.243 (APIServer pid=2792887) INFO 09-23 19:56:25 [loggers.py:271] Engine 000: Avg prompt throughput: 25.6 tokens/s, Avg generation throughput: 52.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193390.559 (APIServer pid=2792887) INFO 09-23 19:56:30 [api_router.py:39] Resetting prefix cache...
+1790193390.562 (EngineCore pid=2793855) INFO 09-23 19:56:30 [block_pool.py:471] Successfully reset prefix cache
+1790193395.244 (APIServer pid=2792887) INFO 09-23 19:56:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193405.244 (APIServer pid=2792887) INFO 09-23 19:56:45 [loggers.py:271] Engine 000: Avg prompt throughput: 76.8 tokens/s, Avg generation throughput: 121.4 tokens/s, Running: 2 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 0.0%
+1790193415.246 (APIServer pid=2792887) INFO 09-23 19:56:55 [loggers.py:271] Engine 000: Avg prompt throughput: 76.8 tokens/s, Avg generation throughput: 151.2 tokens/s, Running: 2 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 0.0%
+1790193425.246 (APIServer pid=2792887) INFO 09-23 19:57:05 [loggers.py:271] Engine 000: Avg prompt throughput: 51.2 tokens/s, Avg generation throughput: 137.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193432.834 (APIServer pid=2792887) INFO 09-23 19:57:12 [api_router.py:39] Resetting prefix cache...
+1790193432.836 (EngineCore pid=2793855) INFO 09-23 19:57:12 [block_pool.py:471] Successfully reset prefix cache
+1790193435.247 (APIServer pid=2792887) INFO 09-23 19:57:15 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193445.247 (APIServer pid=2792887) INFO 09-23 19:57:25 [loggers.py:271] Engine 000: Avg prompt throughput: 102.4 tokens/s, Avg generation throughput: 168.4 tokens/s, Running: 4 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 0.0%
+1790193455.248 (APIServer pid=2792887) INFO 09-23 19:57:35 [loggers.py:271] Engine 000: Avg prompt throughput: 102.4 tokens/s, Avg generation throughput: 241.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193461.886 (APIServer pid=2792887) INFO 09-23 19:57:41 [api_router.py:39] Resetting prefix cache...
+1790193461.888 (EngineCore pid=2793855) INFO 09-23 19:57:41 [block_pool.py:471] Successfully reset prefix cache
+1790193465.249 (APIServer pid=2792887) INFO 09-23 19:57:45 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193475.250 (APIServer pid=2792887) INFO 09-23 19:57:55 [loggers.py:271] Engine 000: Avg prompt throughput: 204.8 tokens/s, Avg generation throughput: 369.1 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.7%, Prefix cache hit rate: 0.0%
+1790193484.556 (APIServer pid=2792887) INFO 09-23 19:58:04 [api_router.py:39] Resetting prefix cache...
+1790193484.558 (EngineCore pid=2793855) INFO 09-23 19:58:04 [block_pool.py:471] Successfully reset prefix cache
+1790193485.251 (APIServer pid=2792887) INFO 09-23 19:58:05 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 40.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193495.253 (APIServer pid=2792887) INFO 09-23 19:58:15 [loggers.py:271] Engine 000: Avg prompt throughput: 409.5 tokens/s, Avg generation throughput: 415.7 tokens/s, Running: 16 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.5%, Prefix cache hit rate: 0.0%
+1790193505.253 (APIServer pid=2792887) INFO 09-23 19:58:25 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 403.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193507.232 (APIServer pid=2792887) INFO 09-23 19:58:27 [api_router.py:39] Resetting prefix cache...
+1790193507.234 (EngineCore pid=2793855) INFO 09-23 19:58:27 [block_pool.py:471] Successfully reset prefix cache
+1790193515.255 (APIServer pid=2792887) INFO 09-23 19:58:35 [loggers.py:271] Engine 000: Avg prompt throughput: 307.1 tokens/s, Avg generation throughput: 120.6 tokens/s, Running: 24 reqs, Waiting: 0 reqs, GPU KV cache usage: 2.9%, Prefix cache hit rate: 0.0%
+1790193525.255 (APIServer pid=2792887) INFO 09-23 19:58:45 [loggers.py:271] Engine 000: Avg prompt throughput: 307.2 tokens/s, Avg generation throughput: 1108.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193530.897 (APIServer pid=2792887) INFO 09-23 19:58:50 [api_router.py:39] Resetting prefix cache...
+1790193530.900 (EngineCore pid=2793855) INFO 09-23 19:58:50 [block_pool.py:471] Successfully reset prefix cache
+1790193535.256 (APIServer pid=2792887) INFO 09-23 19:58:55 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193545.259 (APIServer pid=2792887) INFO 09-23 19:59:05 [loggers.py:271] Engine 000: Avg prompt throughput: 819.0 tokens/s, Avg generation throughput: 1417.3 tokens/s, Running: 32 reqs, Waiting: 0 reqs, GPU KV cache usage: 6.5%, Prefix cache hit rate: 0.0%
+1790193554.856 (APIServer pid=2792887) INFO 09-23 19:59:14 [api_router.py:39] Resetting prefix cache...
+1790193554.857 (EngineCore pid=2793855) INFO 09-23 19:59:14 [block_pool.py:471] Successfully reset prefix cache
+1790193555.259 (APIServer pid=2792887) INFO 09-23 19:59:15 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 220.7 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193565.262 (APIServer pid=2792887) INFO 09-23 19:59:25 [loggers.py:271] Engine 000: Avg prompt throughput: 614.2 tokens/s, Avg generation throughput: 984.2 tokens/s, Running: 48 reqs, Waiting: 0 reqs, GPU KV cache usage: 10.2%, Prefix cache hit rate: 0.0%
+1790193575.264 (APIServer pid=2792887) INFO 09-23 19:59:35 [loggers.py:271] Engine 000: Avg prompt throughput: 614.3 tokens/s, Avg generation throughput: 1472.9 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193578.900 (APIServer pid=2792887) INFO 09-23 19:59:38 [api_router.py:39] Resetting prefix cache...
+1790193578.901 (EngineCore pid=2793855) INFO 09-23 19:59:38 [block_pool.py:471] Successfully reset prefix cache
+1790193585.264 (APIServer pid=2792887) INFO 09-23 19:59:45 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193595.269 (APIServer pid=2792887) INFO 09-23 19:59:55 [loggers.py:271] Engine 000: Avg prompt throughput: 1637.6 tokens/s, Avg generation throughput: 3122.0 tokens/s, Running: 64 reqs, Waiting: 0 reqs, GPU KV cache usage: 14.8%, Prefix cache hit rate: 0.0%
+1790193604.851 (APIServer pid=2792887) INFO 09-23 20:00:04 [api_router.py:39] Resetting prefix cache...
+1790193604.853 (EngineCore pid=2793855) INFO 09-23 20:00:04 [block_pool.py:471] Successfully reset prefix cache
+1790193605.269 (APIServer pid=2792887) INFO 09-23 20:00:05 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 153.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193615.278 (APIServer pid=2792887) INFO 09-23 20:00:15 [loggers.py:271] Engine 000: Avg prompt throughput: 1227.7 tokens/s, Avg generation throughput: 1304.4 tokens/s, Running: 96 reqs, Waiting: 0 reqs, GPU KV cache usage: 16.4%, Prefix cache hit rate: 0.0%
+1790193625.279 (APIServer pid=2792887) INFO 09-23 20:00:25 [loggers.py:271] Engine 000: Avg prompt throughput: 1228.7 tokens/s, Avg generation throughput: 3609.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193633.204 (APIServer pid=2792887) INFO 09-23 20:00:33 [api_router.py:39] Resetting prefix cache...
+1790193633.207 (EngineCore pid=2793855) INFO 09-23 20:00:33 [block_pool.py:471] Successfully reset prefix cache
+1790193635.279 (APIServer pid=2792887) INFO 09-23 20:00:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193645.288 (APIServer pid=2792887) INFO 09-23 20:00:45 [loggers.py:271] Engine 000: Avg prompt throughput: 1636.8 tokens/s, Avg generation throughput: 2169.9 tokens/s, Running: 128 reqs, Waiting: 0 reqs, GPU KV cache usage: 24.5%, Prefix cache hit rate: 0.0%
+1790193655.289 (APIServer pid=2792887) INFO 09-23 20:00:55 [loggers.py:271] Engine 000: Avg prompt throughput: 1638.3 tokens/s, Avg generation throughput: 4381.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193663.785 (APIServer pid=2792887) INFO 09-23 20:01:03 [api_router.py:39] Resetting prefix cache...
+1790193663.787 (EngineCore pid=2793855) INFO 09-23 20:01:03 [block_pool.py:471] Successfully reset prefix cache
+1790193665.289 (APIServer pid=2792887) INFO 09-23 20:01:05 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193675.293 (APIServer pid=2792887) INFO 09-23 20:01:15 [loggers.py:271] Engine 000: Avg prompt throughput: 2047.3 tokens/s, Avg generation throughput: 1669.2 tokens/s, Running: 160 reqs, Waiting: 0 reqs, GPU KV cache usage: 24.2%, Prefix cache hit rate: 0.0%
+1790193685.295 (APIServer pid=2792887) INFO 09-23 20:01:25 [loggers.py:271] Engine 000: Avg prompt throughput: 2047.6 tokens/s, Avg generation throughput: 4600.2 tokens/s, Running: 160 reqs, Waiting: 0 reqs, GPU KV cache usage: 27.5%, Prefix cache hit rate: 0.0%
+1790193695.295 (APIServer pid=2792887) INFO 09-23 20:01:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 1921.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193698.204 (APIServer pid=2792887) INFO 09-23 20:01:38 [api_router.py:39] Resetting prefix cache...
+1790193698.207 (EngineCore pid=2793855) INFO 09-23 20:01:38 [block_pool.py:471] Successfully reset prefix cache
+1790193705.296 (APIServer pid=2792887) INFO 09-23 20:01:45 [loggers.py:271] Engine 000: Avg prompt throughput: 12.8 tokens/s, Avg generation throughput: 1.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.1%, Prefix cache hit rate: 0.0%
+1790193715.298 (APIServer pid=2792887) INFO 09-23 20:01:55 [loggers.py:271] Engine 000: Avg prompt throughput: 2661.8 tokens/s, Avg generation throughput: 4900.2 tokens/s, Running: 99 reqs, Waiting: 63 reqs, GPU KV cache usage: 18.7%, Prefix cache hit rate: 0.0%
+1790193725.299 (APIServer pid=2792887) INFO 09-23 20:02:05 [loggers.py:271] Engine 000: Avg prompt throughput: 2239.8 tokens/s, Avg generation throughput: 4927.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193733.469 (APIServer pid=2792887) INFO 09-23 20:02:13 [api_router.py:39] Resetting prefix cache...
+1790193733.472 (EngineCore pid=2793855) INFO 09-23 20:02:13 [block_pool.py:471] Successfully reset prefix cache
+1790193735.300 (APIServer pid=2792887) INFO 09-23 20:02:15 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193745.303 (APIServer pid=2792887) INFO 09-23 20:02:25 [loggers.py:271] Engine 000: Avg prompt throughput: 2866.3 tokens/s, Avg generation throughput: 903.9 tokens/s, Running: 224 reqs, Waiting: 0 reqs, GPU KV cache usage: 24.8%, Prefix cache hit rate: 0.0%
+1790193755.318 (APIServer pid=2792887) INFO 09-23 20:02:35 [loggers.py:271] Engine 000: Avg prompt throughput: 2696.8 tokens/s, Avg generation throughput: 4985.4 tokens/s, Running: 224 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.2%, Prefix cache hit rate: 0.0%
+1790193765.319 (APIServer pid=2792887) INFO 09-23 20:02:45 [loggers.py:271] Engine 000: Avg prompt throughput: 166.4 tokens/s, Avg generation throughput: 5571.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193773.459 (APIServer pid=2792887) INFO 09-23 20:02:53 [api_router.py:39] Resetting prefix cache...
+1790193773.462 (EngineCore pid=2793855) INFO 09-23 20:02:53 [block_pool.py:471] Successfully reset prefix cache
+1790193775.319 (APIServer pid=2792887) INFO 09-23 20:02:55 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193785.326 (APIServer pid=2792887) INFO 09-23 20:03:05 [loggers.py:271] Engine 000: Avg prompt throughput: 3274.4 tokens/s, Avg generation throughput: 1526.2 tokens/s, Running: 256 reqs, Waiting: 0 reqs, GPU KV cache usage: 31.5%, Prefix cache hit rate: 0.0%
+1790193795.326 (APIServer pid=2792887) INFO 09-23 20:03:15 [loggers.py:271] Engine 000: Avg prompt throughput: 2649.5 tokens/s, Avg generation throughput: 5185.7 tokens/s, Running: 222 reqs, Waiting: 25 reqs, GPU KV cache usage: 20.0%, Prefix cache hit rate: 0.0%
+1790193805.328 (APIServer pid=2792887) INFO 09-23 20:03:25 [loggers.py:271] Engine 000: Avg prompt throughput: 627.2 tokens/s, Avg generation throughput: 6393.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193808.830 (APIServer pid=2792887) INFO 09-23 20:03:28 [api_router.py:39] Resetting prefix cache...
+1790193808.834 (EngineCore pid=2793855) INFO 09-23 20:03:28 [block_pool.py:471] Successfully reset prefix cache
+1790193815.328 (APIServer pid=2792887) INFO 09-23 20:03:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193825.328 (APIServer pid=2792887) INFO 09-23 20:03:45 [loggers.py:271] Engine 000: Avg prompt throughput: 153.6 tokens/s, Avg generation throughput: 75.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 0.0%
+1790193835.328 (APIServer pid=2792887) INFO 09-23 20:03:55 [loggers.py:271] Engine 000: Avg prompt throughput: 153.6 tokens/s, Avg generation throughput: 76.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 0.0%
+1790193845.327 (APIServer pid=2792887) INFO 09-23 20:04:05 [loggers.py:271] Engine 000: Avg prompt throughput: 102.4 tokens/s, Avg generation throughput: 53.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193845.708 (APIServer pid=2792887) INFO 09-23 20:04:05 [api_router.py:39] Resetting prefix cache...
+1790193845.711 (EngineCore pid=2793855) INFO 09-23 20:04:05 [block_pool.py:471] Successfully reset prefix cache
+1790193855.328 (APIServer pid=2792887) INFO 09-23 20:04:15 [loggers.py:271] Engine 000: Avg prompt throughput: 102.4 tokens/s, Avg generation throughput: 17.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 0.0%
+1790193865.328 (APIServer pid=2792887) INFO 09-23 20:04:25 [loggers.py:271] Engine 000: Avg prompt throughput: 307.2 tokens/s, Avg generation throughput: 74.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 0.0%
+1790193875.328 (APIServer pid=2792887) INFO 09-23 20:04:35 [loggers.py:271] Engine 000: Avg prompt throughput: 307.2 tokens/s, Avg generation throughput: 74.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 0.0%
+1790193883.871 (APIServer pid=2792887) INFO 09-23 20:04:43 [api_router.py:39] Resetting prefix cache...
+1790193883.874 (EngineCore pid=2793855) INFO 09-23 20:04:43 [block_pool.py:471] Successfully reset prefix cache
+1790193885.328 (APIServer pid=2792887) INFO 09-23 20:04:45 [loggers.py:271] Engine 000: Avg prompt throughput: 102.4 tokens/s, Avg generation throughput: 38.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193895.329 (APIServer pid=2792887) INFO 09-23 20:04:55 [loggers.py:271] Engine 000: Avg prompt throughput: 409.6 tokens/s, Avg generation throughput: 32.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 0.0%
+1790193905.330 (APIServer pid=2792887) INFO 09-23 20:05:05 [loggers.py:271] Engine 000: Avg prompt throughput: 614.4 tokens/s, Avg generation throughput: 71.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 0.0%
+1790193915.330 (APIServer pid=2792887) INFO 09-23 20:05:15 [loggers.py:271] Engine 000: Avg prompt throughput: 409.6 tokens/s, Avg generation throughput: 73.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.4%, Prefix cache hit rate: 0.0%
+1790193922.544 (APIServer pid=2792887) INFO 09-23 20:05:22 [api_router.py:39] Resetting prefix cache...
+1790193922.547 (EngineCore pid=2793855) INFO 09-23 20:05:22 [block_pool.py:471] Successfully reset prefix cache
+1790193925.330 (APIServer pid=2792887) INFO 09-23 20:05:25 [loggers.py:271] Engine 000: Avg prompt throughput: 204.8 tokens/s, Avg generation throughput: 27.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193935.330 (APIServer pid=2792887) INFO 09-23 20:05:35 [loggers.py:271] Engine 000: Avg prompt throughput: 819.2 tokens/s, Avg generation throughput: 38.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 2.7%, Prefix cache hit rate: 0.0%
+1790193945.331 (APIServer pid=2792887) INFO 09-23 20:05:45 [loggers.py:271] Engine 000: Avg prompt throughput: 1228.7 tokens/s, Avg generation throughput: 65.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 2.6%, Prefix cache hit rate: 0.0%
+1790193955.333 (APIServer pid=2792887) INFO 09-23 20:05:55 [loggers.py:271] Engine 000: Avg prompt throughput: 819.1 tokens/s, Avg generation throughput: 68.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 2.7%, Prefix cache hit rate: 0.0%
+1790193963.386 (APIServer pid=2792887) INFO 09-23 20:06:03 [api_router.py:39] Resetting prefix cache...
+1790193963.389 (EngineCore pid=2793855) INFO 09-23 20:06:03 [block_pool.py:471] Successfully reset prefix cache
+1790193965.333 (APIServer pid=2792887) INFO 09-23 20:06:05 [loggers.py:271] Engine 000: Avg prompt throughput: 409.6 tokens/s, Avg generation throughput: 31.7 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193975.333 (APIServer pid=2792887) INFO 09-23 20:06:15 [loggers.py:271] Engine 000: Avg prompt throughput: 819.2 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790193985.333 (APIServer pid=2792887) INFO 09-23 20:06:25 [loggers.py:271] Engine 000: Avg prompt throughput: 2457.5 tokens/s, Avg generation throughput: 55.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 5.2%, Prefix cache hit rate: 0.0%
+1790193995.334 (APIServer pid=2792887) INFO 09-23 20:06:35 [loggers.py:271] Engine 000: Avg prompt throughput: 1638.3 tokens/s, Avg generation throughput: 60.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 5.2%, Prefix cache hit rate: 0.0%
+1790194005.335 (APIServer pid=2792887) INFO 09-23 20:06:45 [loggers.py:271] Engine 000: Avg prompt throughput: 1638.3 tokens/s, Avg generation throughput: 60.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 5.3%, Prefix cache hit rate: 0.0%
+1790194009.197 (APIServer pid=2792887) INFO 09-23 20:06:49 [api_router.py:39] Resetting prefix cache...
+1790194009.201 (EngineCore pid=2793855) INFO 09-23 20:06:49 [block_pool.py:471] Successfully reset prefix cache
+1790194015.335 (APIServer pid=2792887) INFO 09-23 20:06:55 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 3.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194025.336 (APIServer pid=2792887) INFO 09-23 20:07:05 [loggers.py:271] Engine 000: Avg prompt throughput: 3276.5 tokens/s, Avg generation throughput: 34.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 10.4%, Prefix cache hit rate: 0.0%
+1790194035.337 (APIServer pid=2792887) INFO 09-23 20:07:15 [loggers.py:271] Engine 000: Avg prompt throughput: 1638.2 tokens/s, Avg generation throughput: 42.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 10.3%, Prefix cache hit rate: 0.0%
+1790194045.338 (APIServer pid=2792887) INFO 09-23 20:07:25 [loggers.py:271] Engine 000: Avg prompt throughput: 3276.4 tokens/s, Avg generation throughput: 51.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 3.9%, Prefix cache hit rate: 0.0%
+1790194053.829 (APIServer pid=2792887) INFO 09-23 20:07:33 [api_router.py:39] Resetting prefix cache...
+1790194053.833 (EngineCore pid=2793855) INFO 09-23 20:07:33 [block_pool.py:471] Successfully reset prefix cache
+1790194055.339 (APIServer pid=2792887) INFO 09-23 20:07:35 [loggers.py:271] Engine 000: Avg prompt throughput: 1638.3 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194065.340 (APIServer pid=2792887) INFO 09-23 20:07:45 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 16.8%, Prefix cache hit rate: 0.0%
+1790194075.341 (APIServer pid=2792887) INFO 09-23 20:07:55 [loggers.py:271] Engine 000: Avg prompt throughput: 3276.4 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.6%, Prefix cache hit rate: 0.0%
+1790194085.342 (APIServer pid=2792887) INFO 09-23 20:08:05 [loggers.py:271] Engine 000: Avg prompt throughput: 6553.3 tokens/s, Avg generation throughput: 29.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.7%, Prefix cache hit rate: 0.0%
+1790194095.341 (APIServer pid=2792887) INFO 09-23 20:08:15 [loggers.py:271] Engine 000: Avg prompt throughput: 3276.9 tokens/s, Avg generation throughput: 31.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.7%, Prefix cache hit rate: 0.0%
+1790194105.342 (APIServer pid=2792887) INFO 09-23 20:08:25 [loggers.py:271] Engine 000: Avg prompt throughput: 3276.5 tokens/s, Avg generation throughput: 31.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.7%, Prefix cache hit rate: 0.0%
+1790194110.291 (APIServer pid=2792887) INFO 09-23 20:08:30 [api_router.py:39] Resetting prefix cache...
+1790194110.295 (EngineCore pid=2793855) INFO 09-23 20:08:30 [block_pool.py:471] Successfully reset prefix cache
+1790194115.343 (APIServer pid=2792887) INFO 09-23 20:08:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 9.4 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194125.344 (APIServer pid=2792887) INFO 09-23 20:08:45 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 28.4%, Prefix cache hit rate: 0.0%
+1790194135.344 (APIServer pid=2792887) INFO 09-23 20:08:55 [loggers.py:271] Engine 000: Avg prompt throughput: 4915.0 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 18.0%, Prefix cache hit rate: 0.0%
+1790194145.345 (APIServer pid=2792887) INFO 09-23 20:09:05 [loggers.py:271] Engine 000: Avg prompt throughput: 4915.0 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 3.9%, Prefix cache hit rate: 0.0%
+1790194155.345 (APIServer pid=2792887) INFO 09-23 20:09:15 [loggers.py:271] Engine 000: Avg prompt throughput: 4914.9 tokens/s, Avg generation throughput: 11.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 31.0%, Prefix cache hit rate: 0.0%
+1790194165.346 (APIServer pid=2792887) INFO 09-23 20:09:25 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 13.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 28.4%, Prefix cache hit rate: 0.0%
+1790194174.430 (APIServer pid=2792887) INFO 09-23 20:09:34 [api_router.py:39] Resetting prefix cache...
+1790194174.435 (EngineCore pid=2793855) INFO 09-23 20:09:34 [block_pool.py:471] Successfully reset prefix cache
+1790194175.347 (APIServer pid=2792887) INFO 09-23 20:09:35 [loggers.py:271] Engine 000: Avg prompt throughput: 4914.9 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194185.347 (APIServer pid=2792887) INFO 09-23 20:09:45 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 14.2%, Prefix cache hit rate: 0.0%
+1790194205.347 (APIServer pid=2792887) INFO 09-23 20:10:05 [loggers.py:271] Engine 000: Avg prompt throughput: 6553.5 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.6%, Prefix cache hit rate: 0.0%
+1790194215.347 (APIServer pid=2792887) INFO 09-23 20:10:15 [loggers.py:271] Engine 000: Avg prompt throughput: 6553.2 tokens/s, Avg generation throughput: 5.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 41.3%, Prefix cache hit rate: 0.0%
+1790194225.348 (APIServer pid=2792887) INFO 09-23 20:10:25 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 19.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 24.5%, Prefix cache hit rate: 0.0%
+1790194235.349 (APIServer pid=2792887) INFO 09-23 20:10:35 [loggers.py:271] Engine 000: Avg prompt throughput: 6552.8 tokens/s, Avg generation throughput: 13.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 41.3%, Prefix cache hit rate: 0.0%
+1790194241.167 (APIServer pid=2792887) INFO 09-23 20:10:41 [api_router.py:39] Resetting prefix cache...
+1790194241.172 (EngineCore pid=2793855) INFO 09-23 20:10:41 [block_pool.py:471] Successfully reset prefix cache
+1790194245.350 (APIServer pid=2792887) INFO 09-23 20:10:45 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 12.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194255.350 (APIServer pid=2792887) INFO 09-23 20:10:55 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 21.9%, Prefix cache hit rate: 0.0%
+1790194285.351 (APIServer pid=2792887) INFO 09-23 20:11:25 [loggers.py:271] Engine 000: Avg prompt throughput: 9830.1 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 16.8%, Prefix cache hit rate: 0.0%
+1790194295.352 (APIServer pid=2792887) INFO 09-23 20:11:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 42.5%, Prefix cache hit rate: 0.0%
+1790194315.353 (APIServer pid=2792887) INFO 09-23 20:11:55 [loggers.py:271] Engine 000: Avg prompt throughput: 9829.4 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 9.0%, Prefix cache hit rate: 0.0%
+1790194325.354 (APIServer pid=2792887) INFO 09-23 20:12:05 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 38.7%, Prefix cache hit rate: 0.0%
+1790194345.356 (APIServer pid=2792887) INFO 09-23 20:12:25 [loggers.py:271] Engine 000: Avg prompt throughput: 9829.5 tokens/s, Avg generation throughput: 25.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 62.0%, Prefix cache hit rate: 0.0%
+1790194348.797 (APIServer pid=2792887) INFO 09-23 20:12:28 [api_router.py:39] Resetting prefix cache...
+1790194348.803 (EngineCore pid=2793855) INFO 09-23 20:12:28 [block_pool.py:471] Successfully reset prefix cache
+1790194355.356 (APIServer pid=2792887) INFO 09-23 20:12:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194365.356 (APIServer pid=2792887) INFO 09-23 20:12:45 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 28.4%, Prefix cache hit rate: 0.0%
+1790194395.359 (APIServer pid=2792887) INFO 09-23 20:13:15 [loggers.py:271] Engine 000: Avg prompt throughput: 11999.3 tokens/s, Avg generation throughput: 4.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 75.6%, Prefix cache hit rate: 0.0%
+1790194405.360 (APIServer pid=2792887) INFO 09-23 20:13:25 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 20.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.6%, Prefix cache hit rate: 0.0%
+1790194415.361 (APIServer pid=2792887) INFO 09-23 20:13:35 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 43.8%, Prefix cache hit rate: 0.0%
+1790194445.363 (APIServer pid=2792887) INFO 09-23 20:14:05 [loggers.py:271] Engine 000: Avg prompt throughput: 11999.5 tokens/s, Avg generation throughput: 25.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 9.0%, Prefix cache hit rate: 0.0%
+1790194455.363 (APIServer pid=2792887) INFO 09-23 20:14:15 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 38.7%, Prefix cache hit rate: 0.0%
+1790194485.364 (APIServer pid=2792887) INFO 09-23 20:14:45 [loggers.py:271] Engine 000: Avg prompt throughput: 11999.8 tokens/s, Avg generation throughput: 22.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 75.7%, Prefix cache hit rate: 0.0%
+1790194489.663 (APIServer pid=2792887) INFO 09-23 20:14:49 [api_router.py:39] Resetting prefix cache...
+1790194489.668 (EngineCore pid=2793855) INFO 09-23 20:14:49 [block_pool.py:471] Successfully reset prefix cache
+1790194495.365 (APIServer pid=2792887) INFO 09-23 20:14:55 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 3.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194505.365 (APIServer pid=2792887) INFO 09-23 20:15:05 [loggers.py:271] Engine 000: Avg prompt throughput: 819.2 tokens/s, Avg generation throughput: 409.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194507.602 (APIServer pid=2792887) INFO 09-23 20:15:07 [api_router.py:39] Resetting prefix cache...
+1790194507.606 (EngineCore pid=2793855) INFO 09-23 20:15:07 [block_pool.py:471] Successfully reset prefix cache
+1790194515.366 (APIServer pid=2792887) INFO 09-23 20:15:15 [loggers.py:271] Engine 000: Avg prompt throughput: 819.1 tokens/s, Avg generation throughput: 3.8 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 5.2%, Prefix cache hit rate: 0.0%
+1790194525.367 (APIServer pid=2792887) INFO 09-23 20:15:25 [loggers.py:271] Engine 000: Avg prompt throughput: 819.1 tokens/s, Avg generation throughput: 405.8 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194526.674 (APIServer pid=2792887) INFO 09-23 20:15:26 [api_router.py:39] Resetting prefix cache...
+1790194526.677 (EngineCore pid=2793855) INFO 09-23 20:15:26 [block_pool.py:471] Successfully reset prefix cache
+1790194535.367 (APIServer pid=2792887) INFO 09-23 20:15:35 [loggers.py:271] Engine 000: Avg prompt throughput: 1638.3 tokens/s, Avg generation throughput: 23.8 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 10.5%, Prefix cache hit rate: 0.0%
+1790194545.368 (APIServer pid=2792887) INFO 09-23 20:15:45 [loggers.py:271] Engine 000: Avg prompt throughput: 1638.3 tokens/s, Avg generation throughput: 385.8 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194547.429 (APIServer pid=2792887) INFO 09-23 20:15:47 [api_router.py:39] Resetting prefix cache...
+1790194547.433 (EngineCore pid=2793855) INFO 09-23 20:15:47 [block_pool.py:471] Successfully reset prefix cache
+1790194555.368 (APIServer pid=2792887) INFO 09-23 20:15:55 [loggers.py:271] Engine 000: Avg prompt throughput: 819.1 tokens/s, Avg generation throughput: 0.5 tokens/s, Running: 3 reqs, Waiting: 5 reqs, GPU KV cache usage: 7.8%, Prefix cache hit rate: 0.0%
+1790194565.369 (APIServer pid=2792887) INFO 09-23 20:16:05 [loggers.py:271] Engine 000: Avg prompt throughput: 5734.2 tokens/s, Avg generation throughput: 247.5 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 20.9%, Prefix cache hit rate: 0.0%
+1790194572.241 (APIServer pid=2792887) INFO 09-23 20:16:12 [api_router.py:39] Resetting prefix cache...
+1790194572.245 (EngineCore pid=2793855) INFO 09-23 20:16:12 [block_pool.py:471] Successfully reset prefix cache
+1790194575.369 (APIServer pid=2792887) INFO 09-23 20:16:15 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 161.6 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194585.369 (APIServer pid=2792887) INFO 09-23 20:16:25 [loggers.py:271] Engine 000: Avg prompt throughput: 4915.0 tokens/s, Avg generation throughput: 7.9 tokens/s, Running: 7 reqs, Waiting: 1 reqs, GPU KV cache usage: 36.1%, Prefix cache hit rate: 0.0%
+1790194595.370 (APIServer pid=2792887) INFO 09-23 20:16:35 [loggers.py:271] Engine 000: Avg prompt throughput: 4914.7 tokens/s, Avg generation throughput: 199.7 tokens/s, Running: 7 reqs, Waiting: 1 reqs, GPU KV cache usage: 36.4%, Prefix cache hit rate: 0.0%
+1790194605.372 (APIServer pid=2792887) INFO 09-23 20:16:45 [loggers.py:271] Engine 000: Avg prompt throughput: 3276.3 tokens/s, Avg generation throughput: 202.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 0.0%
+1790194606.516 (APIServer pid=2792887) INFO 09-23 20:16:46 [api_router.py:39] Resetting prefix cache...
+1790194606.520 (EngineCore pid=2793855) INFO 09-23 20:16:46 [block_pool.py:471] Successfully reset prefix cache
+1790194615.372 (APIServer pid=2792887) INFO 09-23 20:16:55 [loggers.py:271] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 1 reqs, Waiting: 7 reqs, GPU KV cache usage: 6.4%, Prefix cache hit rate: 0.0%
+1790194625.373 (APIServer pid=2792887) INFO 09-23 20:17:05 [loggers.py:271] Engine 000: Avg prompt throughput: 8601.0 tokens/s, Avg generation throughput: 16.2 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 61.9%, Prefix cache hit rate: 0.0%
+1790194635.373 (APIServer pid=2792887) INFO 09-23 20:17:15 [loggers.py:271] Engine 000: Avg prompt throughput: 4914.9 tokens/s, Avg generation throughput: 187.1 tokens/s, Running: 7 reqs, Waiting: 0 reqs, GPU KV cache usage: 49.4%, Prefix cache hit rate: 0.0%
+1790194645.375 (APIServer pid=2792887) INFO 09-23 20:17:25 [loggers.py:271] Engine 000: Avg prompt throughput: 6142.8 tokens/s, Avg generation throughput: 121.5 tokens/s, Running: 8 reqs, Waiting: 0 reqs, GPU KV cache usage: 62.7%, Prefix cache hit rate: 0.0%
+1790194651.554 (EngineCore pid=2793855) INFO 09-23 20:17:31 [core.py:1238] Shutdown initiated (timeout=0)
+1790194651.555 (EngineCore pid=2793855) INFO 09-23 20:17:31 [core.py:1261] Shutdown complete
+1790194651.579 (APIServer pid=2792887) INFO:     Shutting down
+1790194651.680 (APIServer pid=2792887) INFO:     Waiting for application shutdown.
+1790194651.681 (APIServer pid=2792887) INFO:     Application shutdown complete.
+1790194651.681 (APIServer pid=2792887) INFO:     Finished server process [2792887]
+1790194652.509 [rank0]:[W923 20:17:32.973030537 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
