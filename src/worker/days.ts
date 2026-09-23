@@ -29,11 +29,32 @@ export function postProgress(h: Active): void {
 /** Takes a checkpoint at run.nowMs if a step from fromMs reached this day's interval mark. */
 export function maybeCheckpoint(h: Active, slot: DaySlot, run: CoreDayRun, fromMs: SimMs): void {
   const g = h.setup.grid;
-  const interval = checkpointInterval(g, slot.day === h.run.focusDay);
+  const focus = slot.day === h.run.focusDay;
+  const interval = checkpointInterval(g, focus);
   if (!checkpointDue(g, slot.day, fromMs, run.nowMs, interval)) return;
   if (slot.checkpoints.some((s) => s.cp.atMs === run.nowMs)) return;
+  if (!focus && firstVictim(h, slot)) return;
   slot.checkpoints = insertCheckpoint(slot.checkpoints, run.checkpoint());
-  if (slot.day !== h.run.focusDay) enforceBudget(h);
+  if (!focus) enforceBudget(h);
+}
+
+/** Byte order of eviction: farthest from the focus day first, later days first on ties. */
+function evictionOrder(h: Active, a: DaySlot, b: DaySlot): number {
+  const f = h.run.focusDay;
+  return Math.abs(b.day - f) - Math.abs(a.day - f) || b.day - a.day;
+}
+
+/**
+ * True when the budget is full and `slot` would lose a checkpoint first, so taking one (a clone
+ * of several MB at Server B) would be wasted.
+ */
+function firstVictim(h: Active, slot: DaySlot): boolean {
+  const others = h.run.days.filter((s) => s.day !== h.run.focusDay);
+  const bytes = others.reduce((sum, s) => sum + totalBytes(s.checkpoints), 0);
+  const size = others.flatMap((s) => s.checkpoints).at(-1)?.bytes ?? 0;
+  if (bytes + size <= h.budgetBytes) return false;
+  const holders = others.filter((s) => s.checkpoints.length > 0 || s === slot);
+  return holders.sort((a, b) => evictionOrder(h, a, b))[0] === slot;
 }
 
 /**
@@ -48,9 +69,7 @@ export function enforceBudget(h: Active): void {
   while (bytes > h.budgetBytes) {
     const victim = others
       .filter((s) => s.checkpoints.length > 0)
-      .sort(
-        (a, b) => Math.abs(b.day - r.focusDay) - Math.abs(a.day - r.focusDay) || b.day - a.day,
-      )[0];
+      .sort((a, b) => evictionOrder(h, a, b))[0];
     if (!victim) return;
     // Drop the checkpoint whose removal leaves the shortest gap between its neighbours (the
     // morning and the shift's end bound the day), so the ones left stay spread out.
