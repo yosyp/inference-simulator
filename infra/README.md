@@ -151,14 +151,15 @@ This section is the spec for `.github/workflows/deploy.yml` (WP I3).
 
 **Jobs.**
 
-- `build`: no AWS and no `id-token`. Install, lint, typecheck, test, build, and run the production-CSP smoke test. Upload `dist/` as an artifact.
-- `deploy`: `needs: build`, with `permissions: { id-token: write, contents: read }` and `concurrency: { group: deploy-prod, cancel-in-progress: false }`. It downloads `dist/` and runs the commands below.
+- `ci`: calls `ci.yml` (`uses: ./.github/workflows/ci.yml`, `permissions: contents: read`), so a deploy runs exactly the checks every push runs: install, lint, typecheck, test, build, the production-CSP smoke test, and Terraform fmt/validate. It has no AWS access and no `id-token`. Its `verify` job uploads `dist/`, the same build the smoke test served, as the `dist` artifact.
+- `deploy`: `needs: ci`, with `permissions: { id-token: write, contents: read }`. It downloads `dist/` and runs the commands below.
   - Any step in a job with `id-token: write` can mint a token for the role. Keeping `pnpm install` and the build in the other job keeps dependency install scripts away from AWS.
   - Never cancel a deploy in progress. A cancelled apply can leave the state locked.
   - Don't give the job an `environment:`. That changes the OIDC subject to `...:environment:<name>`, and the role refuses it.
   - Set `terraform_wrapper: false` on `hashicorp/setup-terraform` (pin `terraform_version: 1.10.5`). The wrapper adds output that breaks `$(terraform output -raw ...)`.
+- The workflow sets `concurrency: { group: deploy-prod, cancel-in-progress: false }` at the top level, so a whole deploy run, checks included, waits for the one before it.
 
-**Commands**, after checkout, the `dist/` download, `configure-aws-credentials`, and `setup-terraform`:
+**Commands**, after checkout, the `dist/` download, `setup-terraform`, and `configure-aws-credentials` (with `mask-aws-account-id: true`). No third-party action runs after the credentials exist. The workflow also adds `--no-progress` to each sync and `--query Invalidation.Id --output text` to the invalidation, to keep the logs short.
 
 ```bash
 # The repo is public, so its Actions logs are too. Plan output contains ARNs;
@@ -219,6 +220,7 @@ Notes for I3:
 | `AccessDenied` for some action during plan or apply | The deploy role lacks that permission | Add the action to `infra/bootstrap/deploy_policy.tf`, apply bootstrap locally, then `gh run rerun <run-id> --failed`. |
 | `Error acquiring the state lock` | An earlier run died while holding the lock | Make sure no deploy is running. Then, with your own credentials: `terraform -chdir=infra/site init -backend-config="bucket=<state bucket>"` and `terraform -chdir=infra/site force-unlock <lock ID from the error>`. |
 | Certificate validation times out | A CAA record blocks Amazon, or the zone isn't the public `yoschwab.com` zone in this account | See step 1, item 3. |
+| `ci / verify` fails at `pnpm e2e` | A CSP violation, console error, or unexpected request in the production build | Download the `playwright-report` artifact from the run; its `requests.txt` attachment lists every request. |
 | `headers.json: ... has no mapping in headers.tf` | A new header in `headers.json` | Add its lower-case name to `custom_header_names` in `headers.tf`, or map it to a structured field. |
 
 ## Changing things later

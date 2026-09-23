@@ -35,8 +35,8 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | B4 Validation | todo | | |
 | I1 Bootstrap | merged | main | OIDC subject uses the immutable prefix (K22); bootstrap also takes `site_domain` to scope Route 53 and ACM |
 | I2 Site | merged | main | aws provider 6.66; `headers.json` is the header source for Terraform and I4; outputs `site_bucket_name`, `cloudfront_distribution_id`, `site_url`, `log_bucket_name` |
-| I3 Deploy workflow | running | | Makes ci.yml reusable (workflow_call) and adds Terraform and e2e steps |
-| I4 CSP smoke test | running | | |
+| I3 Deploy workflow | merged | main | deploy.yml calls ci.yml (workflow_call); build job has no id-token; deploy never cancelled; ci concurrency split per workflow |
+| I4 CSP smoke test | merged | main | `scripts/serve-prod.ts` + `e2e/`; optional steps marked IF PRESENT for X1 to harden; negative checks (inline style, blob worker, fetch) all fail as expected |
 | I5 First deploy | todo | | Author runs |
 | X1–X5 | todo | | |
 
