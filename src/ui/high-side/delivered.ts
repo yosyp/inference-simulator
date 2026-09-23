@@ -3,7 +3,7 @@
 // and the pending days are U4's pendingDaysAt over those rows. ChartStack applies the same filter
 // inline; consistency.test.tsx checks the two, and the timeline's arrival ticks, agree.
 
-import { pendingDaysAt } from '../../charts/index.ts';
+import { isRollupComputing, pendingDaysAt } from '../../charts/index.ts';
 import { formatClock, formatDay } from '../../charts/format.ts';
 import type { RollupRow } from '../../engine/results.ts';
 import {
@@ -64,7 +64,7 @@ export function deliveredRollupAt(
     rows,
     deliveredDays: WEEK.filter((d) => rows.some((r) => r.day === d)),
     pendingDays,
-    computingDays: pendingDays.filter((d) => rollupDeliveryMs(d) <= playheadMs),
+    computingDays: pendingDays.filter((d) => isRollupComputing(d, playheadMs)),
   };
 }
 

@@ -11,6 +11,10 @@
 // for the buttons, the pointer for ctrl/⌘ + wheel) at the same pixel; if the playhead would fall
 // outside the zoomed window, the window shows the playhead's page instead. Reset returns to the
 // shift day. The window is a pure function of (view, playhead, shift).
+//
+// A scenario may set a default span (Scenario.chartWindowMs, for lessons whose spikes are thin at the
+// whole-day window). Then a run starts zoomed: a page of that span centred on the lesson moment,
+// clamped to the shift, paging with the playhead like any zoom. "Shift day" still resets to the day.
 
 import { DAY_MS, HOUR_MS, MINUTE_MS, WEEK_DAYS, type SimMs } from '../engine/time.ts';
 import type { TimeWindow } from '../playback/types.ts';
@@ -52,6 +56,17 @@ export function shiftWindow(atMs: SimMs, shift: Shift): TimeWindow {
 export function zoomSpans(shift: Shift): number[] {
   const day = shift.endMs - shift.startMs;
   return [day, ...ZOOM_SPANS_MS.filter((s) => s < day)];
+}
+
+/** A run's starting view: chartWindowMs centred on the lesson moment, or null (the shift day). */
+export function defaultView(
+  spanMs: number | undefined,
+  lessonAtMs: SimMs | undefined,
+  shift: Shift,
+): ChartView | null {
+  if (spanMs === undefined || lessonAtMs === undefined || !(spanMs > 0)) return null;
+  if (spanMs >= shift.endMs - shift.startMs) return null;
+  return { spanMs, anchorMs: lessonAtMs - spanMs / 2 };
 }
 
 /** The window for a view at this playhead position. */

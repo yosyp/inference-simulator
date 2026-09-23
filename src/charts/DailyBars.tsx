@@ -46,8 +46,18 @@ export interface DailyBarsProps {
   title?: string;
   /** Days still waiting for their rollup (the current day, and yesterday before 12:00). */
   pendingDays?: readonly DayIndex[];
+  /** Playhead: a pending day already due reads "Computing…" (as the rollup table); otherwise "Arrives …". */
+  playheadMs?: number;
   /** 0..1 bar growth, for the Live-to-High-side collapse. */
   progress?: number;
+}
+
+/**
+ * A pending day whose rollup is due (its delivery time is at or before the playhead) but not yet
+ * computed: the engine computes days out of order, lesson day first (K21). U7's dayStatus uses it.
+ */
+export function isRollupComputing(day: DayIndex, playheadMs: number): boolean {
+  return rollupDeliveryMs(day) <= playheadMs;
 }
 
 interface Bar {
@@ -97,6 +107,7 @@ export function DailyBars({
   height,
   title = METRICS[metric].label,
   pendingDays = [],
+  playheadMs,
   progress = 1,
 }: DailyBarsProps) {
   const [selected, setSelected] = useState<number | null>(null);
@@ -222,7 +233,9 @@ export function DailyBars({
                       fontSize={11}
                       fill={chartColors.axis}
                     >
-                      {`Arrives ${formatDay(rollupDeliveryMs(d))} ${formatClock(rollupDeliveryMs(d))}`}
+                      {playheadMs !== undefined && isRollupComputing(d, playheadMs)
+                        ? 'Computing…'
+                        : `Arrives ${formatDay(rollupDeliveryMs(d))} ${formatClock(rollupDeliveryMs(d))}`}
                     </text>
                   )}
                 </g>

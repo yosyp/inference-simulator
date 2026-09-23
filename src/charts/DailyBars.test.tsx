@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import type { RollupRow } from '../engine/results.ts';
-import { rollupDeliveryMs, type DayIndex } from '../engine/time.ts';
+import { rollupDeliveryMs, simMs, type DayIndex } from '../engine/time.ts';
 import { createFakeIndex } from '../fixtures/fake-index.ts';
 import { BAR_MAX_PX, DailyBars, layoutBars } from './DailyBars.tsx';
 import { NOT_COLLECTED_MESSAGE, NotCollectedPanel } from './NotCollectedPanel.tsx';
@@ -38,7 +38,7 @@ describe('DailyBars', () => {
     expect(container.querySelector('[data-bar]')!.getAttribute('d')).not.toBe('');
   });
 
-  it('outlines pending days with when they arrive', () => {
+  it('outlines pending days with when they arrive, or Computing… once due', () => {
     const { container } = render(
       <DailyBars
         rows={rows(2, 1)}
@@ -47,10 +47,13 @@ describe('DailyBars', () => {
         width={960}
         height={120}
         pendingDays={[1, 2] as DayIndex[]}
+        playheadMs={simMs(2, 13)}
       />,
     );
     expect(container.querySelectorAll('[data-pending-day]')).toHaveLength(2);
-    expect(screen.getByText('Arrives Wed 12:00')).toBeInTheDocument();
+    // Tuesday's rollup was due Wed 12:00 but isn't computed yet, in the rollup table's words.
+    expect(screen.getByText('Computing…')).toBeInTheDocument();
+    expect(screen.getByText('Arrives Thu 12:00')).toBeInTheDocument();
     expect(rollupDeliveryMs(1)).toBeGreaterThan(0);
   });
 

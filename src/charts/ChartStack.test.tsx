@@ -175,6 +175,29 @@ describe('ChartStack window and zoom', () => {
     expect(screen.getByText('Wed 07:00–17:00')).toBeInTheDocument();
   });
 
+  it("opens at the scenario's chartWindowMs around the lesson moment, follows, and resets", async () => {
+    const user = userEvent.setup();
+    const base = fixtureScenarios()[4]!;
+    const store = createStaticStore(
+      createFakeIndex({ replicas: 2 }),
+      { playheadMs: simMs(2, 9, 13) },
+      {
+        ...base,
+        lessonMoment: { ...base.lessonMoment, atMs: simMs(2, 9, 15) },
+        chartWindowMs: HOUR_MS,
+      },
+    );
+    render(<ChartStack store={store} width={1000} maxHz={1000} />);
+    expect(screen.getByText('Wed 08:45–09:45')).toBeInTheDocument();
+    act(() => store.set({ playheadMs: simMs(2, 10) }));
+    expect(screen.getByText('Wed 09:45–10:45')).toBeInTheDocument();
+    // Clamped to the shift near its end.
+    act(() => store.set({ playheadMs: simMs(2, 16, 50) }));
+    expect(screen.getByText('Wed 16:00–17:00')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Shift day' }));
+    expect(screen.getByText('Wed 07:00–17:00')).toBeInTheDocument();
+  });
+
   it('reads values at a keyboard cursor and zooms from the keyboard', async () => {
     const user = userEvent.setup();
     const { container } = setup({ replicas: 8, chart3: 'perReplicaLoad' });

@@ -4,7 +4,7 @@
 
 export { ChartStack, pendingDaysAt } from './ChartStack.tsx';
 export type { ChartStackProps } from './ChartStack.tsx';
-export { DailyBars, layoutBars } from './DailyBars.tsx';
+export { DailyBars, isRollupComputing, layoutBars } from './DailyBars.tsx';
 export type { DailyBarsProps, RollupMetric } from './DailyBars.tsx';
 export { NOT_COLLECTED_MESSAGE, NotCollectedPanel } from './NotCollectedPanel.tsx';
 export type { NotCollectedPanelProps } from './NotCollectedPanel.tsx';
