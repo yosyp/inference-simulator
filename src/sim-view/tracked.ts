@@ -9,7 +9,7 @@ import { trackedStyle } from '../ui/theme/encodings.ts';
 import { canvasFonts } from '../ui/theme/typography.ts';
 import { replicaLabel, trackedOutcome } from './format.ts';
 import type { Rect, SceneLayout } from './layout.ts';
-import { arrowHeadPath, pill, setDash, text, type Ctx } from './paint.ts';
+import { arrowHeadPath, fittedText, pill, setDash, text, type Ctx } from './paint.ts';
 
 const ARROW_PX = 6;
 const FADED_DASH = [3, 2];
@@ -36,6 +36,22 @@ export function routeLabel(requests: readonly TrackedRequestView[], i: number): 
     return `${replicaLabel(prev.replica)}→${replicaLabel(cur.replica)}`;
   }
   return replicaLabel(cur.replica);
+}
+
+/**
+ * A turn's strip line, longest first, for fitText: "T3 R2→R5 2.4 s · 20 ms/tok", then without the
+ * ms/tok suffix, then with tight units ("2.4s"), then with only the replica it landed on ("T3 R5").
+ */
+export function turnLines(requests: readonly TrackedRequestView[], i: number): string[] {
+  const r = requests[i]!;
+  const route = routeLabel(requests, i);
+  const outcome = trackedOutcome(r);
+  const head = `T${r.turn} ${route} ${outcome}`;
+  const tight = outcome.replace(/(\d) (m?s|min)$/, '$1$2');
+  const dest = r.replica === null ? 'router' : replicaLabel(r.replica);
+  const lines = [head, `T${r.turn} ${route} ${tight}`, `T${r.turn} ${dest} ${tight}`];
+  if (r.tpotMs !== null) lines.unshift(`${head} · ${Math.round(r.tpotMs)} ms/tok`);
+  return lines;
 }
 
 function pathTo(ctx: Ctx, x0: number, x1: number, y: number): void {
@@ -130,14 +146,16 @@ export function drawTrackedStrip(ctx: Ctx, area: Rect, scene: SceneState): void 
   const tracked = scene.tracked;
   if (!tracked) {
     if (scene.detail === 'dots') {
-      text(ctx, 'Click a dot to track', area.x, area.y + 8, {
-        font: canvasFonts.small,
-        color: colors['ink-subtle'],
-      });
-      text(ctx, 'an analyst', area.x, area.y + 8 + STRIP_LINE_H_PX, {
-        font: canvasFonts.small,
-        color: colors['ink-subtle'],
-      });
+      const hint = { font: canvasFonts.small, color: colors['ink-subtle'] };
+      fittedText(ctx, ['Click a dot to track', 'Click a dot'], area.x, area.y + 8, area.w, hint);
+      fittedText(
+        ctx,
+        ['an analyst', 'to track'],
+        area.x,
+        area.y + 8 + STRIP_LINE_H_PX,
+        area.w,
+        hint,
+      );
     }
     return;
   }
@@ -150,27 +168,35 @@ export function drawTrackedStrip(ctx: Ctx, area: Rect, scene: SceneState): void 
   ctx.strokeStyle = trackedStyle.haloStroke;
   ctx.lineWidth = trackedStyle.haloWidthPx;
   ctx.stroke();
-  text(ctx, `Analyst ${tracked.analyst}`, area.x + 14, gy, {
-    font: canvasFonts.label,
-    color: trackedStyle.labelColor,
-  });
+  fittedText(
+    ctx,
+    [`Analyst ${tracked.analyst}`, String(tracked.analyst)],
+    area.x + 14,
+    gy,
+    area.w - 14,
+    {
+      font: canvasFonts.label,
+      color: trackedStyle.labelColor,
+    },
+  );
 
   const reqs = tracked.requests;
   const fit = Math.max(0, Math.floor((area.h - STRIP_HEADER_H_PX) / STRIP_LINE_H_PX));
   const first = Math.max(0, reqs.length - fit);
   if (reqs.length === 0 && fit > 0) {
-    text(ctx, 'No turns yet today', area.x, area.y + STRIP_HEADER_H_PX + 6, {
-      font: canvasFonts.small,
-      color: colors['ink-subtle'],
-    });
+    fittedText(
+      ctx,
+      ['No turns yet today', 'No turns yet'],
+      area.x,
+      area.y + STRIP_HEADER_H_PX + 6,
+      area.w,
+      { font: canvasFonts.small, color: colors['ink-subtle'] },
+    );
     return;
   }
   for (let i = first; i < reqs.length; i++) {
-    const r = reqs[i]!;
     const y = area.y + STRIP_HEADER_H_PX + 6 + (i - first) * STRIP_LINE_H_PX;
-    const tpot = r.tpotMs === null ? '' : ` · ${Math.round(r.tpotMs)} ms/tok`;
-    const line = `T${r.turn} ${routeLabel(reqs, i)} ${trackedOutcome(r)}${tpot}`;
-    text(ctx, line, area.x, y, {
+    fittedText(ctx, turnLines(reqs, i), area.x, y, area.w, {
       font: canvasFonts.numeric,
       color: i === reqs.length - 1 ? colors.ink : colors['ink-subtle'],
     });

@@ -10,7 +10,7 @@ import { drawDots, drawOverflow, placeRouterDots, type DotScratch } from './dots
 import { formatRate } from './format.ts';
 import type { HitBuffer } from './hit-test.ts';
 import type { Rect, SceneLayout } from './layout.ts';
-import { arrowHeadPath, box, chevronPath, setDash, text, type Ctx } from './paint.ts';
+import { arrowHeadPath, box, chevronPath, fittedText, setDash, type Ctx } from './paint.ts';
 
 const CHEVRON_SPACING_PX = 12;
 /** Chevron drift per simulated second: a crawl at 1×, brisk at 10×. */
@@ -96,8 +96,14 @@ export function drawRouter(
 ): Rect {
   const r = layout.router;
   box(ctx, r, colors.router, colors['border-strong'], 1);
-  text(ctx, 'Router', r.x + 8, r.y + 12, { font: canvasFonts.label, color: colors.ink });
-  text(ctx, `${formatRate(scene.router.offeredPerS)} req/s`, r.x + 8, r.y + 27, {
+  // Text stays inside the box at every width: longest form first, then an ellipsis (fitText).
+  const textW = r.w - 16;
+  fittedText(ctx, ['Router'], r.x + 8, r.y + 12, textW, {
+    font: canvasFonts.label,
+    color: colors.ink,
+  });
+  const rate = formatRate(scene.router.offeredPerS);
+  fittedText(ctx, [`${rate} req/s`, `${rate}/s`, rate], r.x + 8, r.y + 27, textW, {
     font: canvasFonts.numeric,
     color: colors['ink-muted'],
   });
@@ -120,5 +126,8 @@ export function drawRouter(
 export function drawQuietRouter(ctx: Ctx, layout: SceneLayout): void {
   const r = layout.router;
   box(ctx, r, null, colors['high-side-outline'], 1);
-  text(ctx, 'Router', r.x + 8, r.y + 12, { font: canvasFonts.label, color: colors['ink-subtle'] });
+  fittedText(ctx, ['Router'], r.x + 8, r.y + 12, r.w - 16, {
+    font: canvasFonts.label,
+    color: colors['ink-subtle'],
+  });
 }

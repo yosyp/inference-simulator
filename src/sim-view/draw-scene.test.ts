@@ -5,6 +5,9 @@ import { colors } from '../ui/theme/colors.ts';
 import { dotStyles, replicaStyles, trackedStyle } from '../ui/theme/encodings.ts';
 import { HIGH_SIDE_NOTE, createDrawScratch, drawScene, niceCeil } from './draw-scene.ts';
 import { createHitBuffer } from './hit-test.ts';
+import { fitText } from './paint.ts';
+import { turnLines } from './tracked.ts';
+import { canvasFonts } from '../ui/theme/typography.ts';
 import type { LaneLayout, Rect, SceneLayout, Viewport } from './layout.ts';
 import {
   createRecordingContext,
@@ -550,5 +553,66 @@ describe('drawScene: High side', () => {
     }
     expect(t.some((x) => x.startsWith('Loading'))).toBe(false);
     expect(hits.count).toBe(0);
+  });
+});
+
+describe('drawScene: router box text', () => {
+  type TextOp = Extract<DrawOp, { op: 'fillText' }>;
+  const fontPx = (font: string) => Number(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? 10);
+  // Mirrors the recording context's measureText: 0.6 em per character.
+  const width = (o: TextOp) => o.text.length * fontPx(o.font) * 0.6;
+  const right = (o: TextOp) =>
+    o.textAlign === 'right' ? o.x : o.textAlign === 'center' ? o.x + width(o) / 2 : o.x + width(o);
+
+  function longScene(replicas: number, tracked: boolean): SceneState {
+    return scene({
+      router: { atRouter: dots(40, 'queued'), offeredPerS: 1234.5 },
+      replicas: Array.from({ length: replicas }, (_, r) => replica(r)),
+      tracked: tracked
+        ? {
+            analyst: 123456,
+            requests: [
+              turn({ turn: 11, replica: 1, ttftMs: 12_345, tpotMs: 123 }),
+              turn({ turn: 12, replica: replicas - 1, moved: true, ttftMs: 2_400, tpotMs: 20 }),
+              turn({ turn: 13, replica: null, ttftMs: null, state: 'timedOut' }),
+            ],
+          }
+        : null,
+    });
+  }
+
+  it.each([
+    [360, 1],
+    [640, 2],
+    [800, 8],
+    [1008, 4],
+    [1008, 16],
+    [1440, 3],
+  ])('keeps every label inside the box at %i px with %i replicas', (widthPx, n) => {
+    for (const tracked of [true, false]) {
+      const { ctx, layout } = draw(longScene(n, tracked), { widthPx, heightPx: 271, dpr: 1 });
+      const r = layout.router;
+      const inside = ctx.ops.filter(
+        (o): o is TextOp => o.op === 'fillText' && o.x >= r.x && o.x < r.x + r.w && o.y < r.y + r.h,
+      );
+      expect(inside.length).toBeGreaterThan(tracked ? 4 : 2);
+      for (const o of inside) expect(right(o), o.text).toBeLessThanOrEqual(r.x + r.w - 4);
+    }
+  });
+
+  it('drops ms/tok first, then shortens, then truncates', () => {
+    const reqs = [
+      turn({ turn: 11, replica: 1 }),
+      turn({ turn: 12, replica: 7, moved: true, ttftMs: 2_400, tpotMs: 20 }),
+    ];
+    const ctx = createRecordingContext();
+    // Mono 11 px measures 6.6 px per character here.
+    const fit = (w: number) => fitText(ctx, turnLines(reqs, 1), w, canvasFonts.numeric);
+    expect(fit(180)).toBe('T12 R2→R8 2.4 s · 20 ms/tok');
+    expect(fit(100)).toBe('T12 R2→R8 2.4 s');
+    expect(fit(95)).toBe('T12 R2→R8 2.4s');
+    expect(fit(80)).toBe('T12 R8 2.4s');
+    expect(fit(50)).toBe('T12 R8…');
+    expect(fit(5)).toBe('');
   });
 });

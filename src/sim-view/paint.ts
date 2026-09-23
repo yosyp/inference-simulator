@@ -191,3 +191,45 @@ export function pill(ctx: Ctx, s: string, cx: number, cy: number, style: PillSty
   text(ctx, s, r.x + w / 2, r.y + h / 2, { font: style.font, color: style.color, align: 'center' });
   return w;
 }
+
+const ELLIPSIS = '…';
+
+/**
+ * The first of `candidates` (longest first) whose width in `font` is at most `maxW`; failing all,
+ * the last one cut short with an ellipsis, or '' when not even the ellipsis fits. Sets ctx.font.
+ */
+export function fitText(
+  ctx: Ctx,
+  candidates: readonly string[],
+  maxW: number,
+  font: string,
+): string {
+  ctx.font = font;
+  for (const s of candidates) {
+    if (ctx.measureText(s).width <= maxW) return s;
+  }
+  const last = candidates[candidates.length - 1] ?? '';
+  // Binary search on the kept prefix length.
+  let lo = 0;
+  let hi = last.length - 1;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (ctx.measureText(last.slice(0, mid).trimEnd() + ELLIPSIS).width <= maxW) lo = mid;
+    else hi = mid - 1;
+  }
+  const cut = last.slice(0, lo).trimEnd() + ELLIPSIS;
+  return ctx.measureText(cut).width <= maxW ? cut : '';
+}
+
+/** Draws `candidates[i]` per fitText, left-aligned at x, within maxW. */
+export function fittedText(
+  ctx: Ctx,
+  candidates: readonly string[],
+  x: number,
+  y: number,
+  maxW: number,
+  style: TextStyle,
+): void {
+  const s = fitText(ctx, candidates, maxW, style.font);
+  if (s) text(ctx, s, x, y, style);
+}
