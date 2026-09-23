@@ -10,20 +10,20 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E1 Keyed RNG | merged | main | `u01(seed, Source.x, k0..k5)` plus inverse-CDF transforms; think time is log-logistic (K23); ~20M draws/s in Node |
 | E2 Event core | merged | main | `createDayRunner(modules)`; `defineModule`; two-number event payloads; kind ranges E6 100s, E7 200s, E5 300s, E8 400s, E9 500s; ~2M events/s in the core; K27 |
 | E3 Cost model | merged | main | Batch-1 TPOT +5% at 8k, +20% at 32k, +77% at 122,880 (K3 holds); TTFT 38 s at 120k. Tab 3 compute-util bound tightened in §7.3. |
-| E4 KV blocks | running | | |
-| E5 Scheduler | todo | | |
-| E6 Load generator | todo | | |
-| E7 Router | todo | | |
+| E4 KV blocks | merged | main | Recipe at the top of `src/engine/kv/index.ts`; ~9 µs per request lifecycle; warm-pool clone 0.31 ms / 310 KiB. Free-block order follows vLLM ≥0.26 (0.20.1 differs by ~1 partial block per request; one-line change if parity matters). |
+| E5 Scheduler | running | | |
+| E6 Load generator | running | | |
+| E7 Router | running | | |
 | E8 Failure | todo | | |
-| E9 Metrics | todo | | Waits for G1 |
+| E9 Metrics | running | | Parameterized; S1's storage recommendations fold in after G1 |
 | E10 Oracle | todo | | |
 | E11 Assembly and worker | todo | | |
 | U1 Tokens and shell | merged | main | Tokens in `@theme static` + TS mirror (drift test); primitives; `AppShell`; decisions in K26. Don't use AnimatePresence `popLayout` (injects `<style>`). |
 | U2 Store and engine client | merged | main | `createPlaybackStore({ transport, createResults })`; fake transport and fixture store for UI WPs; stale-revision rule refined in protocol.ts; worker file must be `src/worker/engine.worker.ts` |
-| U3 Canvas | todo | | |
-| U4 Charts | todo | | |
-| U5 Timeline | todo | | |
-| U6 Chrome and sidebar | todo | | |
+| U3 Canvas | running | | |
+| U4 Charts | running | | |
+| U5 Timeline | running | | |
+| U6 Chrome and sidebar | running | | |
 | U7 High side | todo | | |
 | U8 Results index | running | | Split from U2 at kickoff |
 | C1 Runner | todo | | |
