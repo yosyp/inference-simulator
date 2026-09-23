@@ -161,6 +161,7 @@ export function createFakeIndex(opts: FixtureOptions): ResultsIndex {
                 replica: turn % replicas,
                 state: 'finished' as const,
                 ttftMs: 120 * turn,
+                tpotMs: 17,
                 moved: turn > 1 && replicas > 1,
               })),
             },

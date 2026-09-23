@@ -5,12 +5,12 @@ import { useState } from 'react';
 import { calibration as appCalibration } from './data/calibration.ts';
 import type { Calibration } from './engine/calibration.ts';
 import { ChartStack } from './charts/index.ts';
-import { fixtureScenarios } from './fixtures/scenarios.ts';
 import { createResultsStore } from './playback/index/index.ts';
 import { createPlaybackStore } from './playback/store.ts';
 import { createWorkerTransport } from './playback/worker-transport.ts';
 import type { PlaybackState, PlaybackStore } from './playback/types.ts';
 import { usePlaybackSelector } from './playback/use-playback-selector.ts';
+import { scenarios as registryScenarios } from './scenarios/index.ts';
 import type { Scenario } from './scenarios/schema.ts';
 import { SimCanvas } from './sim-view/index.ts';
 import { ControlPanel, IntroModal, ScenarioTabs, useScenarioRun } from './ui/chrome/index.ts';
@@ -19,11 +19,10 @@ import { Sidebar } from './ui/sidebar/index.ts';
 import { RollupTable } from './ui/high-side/index.ts';
 import { WeekTimeline } from './ui/timeline/index.ts';
 
-// --- Wiring. The store runs the real engine in a Web Worker (E11). X1 swaps the scenarios for the
-// registry once C2 and C3 land. --------------------------------------------------------------------
+// --- Wiring: the scenario registry, and a store that runs the real engine in a Web Worker (E11). --
 
 function createAppScenarios(): readonly Scenario[] {
-  return fixtureScenarios();
+  return registryScenarios();
 }
 
 function createAppStore(): PlaybackStore {

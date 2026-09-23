@@ -137,6 +137,8 @@ export interface TrackedRequestView {
   replica: ReplicaId | null;
   state: DotState | 'finished' | 'rejected' | 'timedOut' | 'failed';
   ttftMs: number | null;
+  /** Mean time per output token once the request finished with ≥ 2 tokens; null otherwise. */
+  tpotMs: number | null;
   /** True when this turn landed on a different replica than the previous turn. */
   moved: boolean;
 }

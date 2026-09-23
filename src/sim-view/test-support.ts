@@ -352,6 +352,7 @@ export function turn(over: Partial<TrackedRequestView> & { turn: number }): Trac
     replica: 0,
     state: 'finished',
     ttftMs: 420,
+    tpotMs: null,
     moved: false,
     ...over,
   };

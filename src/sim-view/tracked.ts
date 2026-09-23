@@ -168,7 +168,8 @@ export function drawTrackedStrip(ctx: Ctx, area: Rect, scene: SceneState): void 
   for (let i = first; i < reqs.length; i++) {
     const r = reqs[i]!;
     const y = area.y + STRIP_HEADER_H_PX + 6 + (i - first) * STRIP_LINE_H_PX;
-    const line = `T${r.turn} ${routeLabel(reqs, i)} ${trackedOutcome(r)}`;
+    const tpot = r.tpotMs === null ? '' : ` · ${Math.round(r.tpotMs)} ms/tok`;
+    const line = `T${r.turn} ${routeLabel(reqs, i)} ${trackedOutcome(r)}${tpot}`;
     text(ctx, line, area.x, y, {
       font: canvasFonts.numeric,
       color: i === reqs.length - 1 ? colors.ink : colors['ink-subtle'],

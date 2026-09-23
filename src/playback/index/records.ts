@@ -193,10 +193,18 @@ export function trackedView(dd: DayData | null, analyst: number, t: SimMs): Trac
         replica: replica >= 0 ? replica : null,
         state,
         ttftMs: firstTokenMs <= t ? firstTokenMs - arriveMs : null,
+        tpotMs: rec ? tpotOf(rec.rb, rec.k, t) : null,
         moved: prev >= 0 && served >= 0 && served !== prev,
       },
     });
   }
   views.sort((x, y) => x.arriveMs - y.arriveMs || x.view.request - y.view.request);
   return views.map((v) => v.view);
+}
+
+function tpotOf(rb: RequestBlock, k: number, t: number): number | null {
+  const end = rb.endMs[k]!;
+  const out = rb.outputTokens[k]!;
+  if (!(end <= t) || rb.outcome[k] !== OUTCOME.finished || out < 2) return null;
+  return (end - rb.firstTokenMs[k]!) / (out - 1);
 }
