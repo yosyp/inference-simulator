@@ -151,7 +151,7 @@ export interface TransitionBlock {
 
 export const REPLICA_STATE = {
   ready: 0,
-  crashed: 1, // dead but not yet marked down; the router still sends to it
+  crashed: 1, // dead, not yet marked down; the router still sends to it if it was Ready when it crashed
   down: 2, // marked down
   loadingWeights: 3,
   initializingEngine: 4,
