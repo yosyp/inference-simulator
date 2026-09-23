@@ -121,7 +121,10 @@ const statusTemplates: StatusTemplate[] = [
       if (!r || !(r.kvUsedFrac >= 0.85)) return null;
       const waiting = Math.round(r.waiting);
       const queue = waiting > 0 ? `: ${waiting} requests wait for memory` : '';
-      return `KV cache at ${pct(r.kvUsedFrac)}${queue}. nvidia-smi ${pct(r.nvidiaSmiUtil)}, compute ${pct(r.computeUtil)}.`;
+      const served = Number.isFinite(s.fleet.finishedPerS)
+        ? ` Still serving ${Math.round(s.fleet.finishedPerS * 60)} requests a minute.`
+        : '';
+      return `KV cache at ${pct(r.kvUsedFrac)}${queue}.${served} nvidia-smi ${pct(r.nvidiaSmiUtil)}, compute ${pct(r.computeUtil)}.`;
     },
   },
   {
@@ -152,6 +155,14 @@ export const scenario: Scenario = {
   // An analyst in a conversation that is still going when the pool is full.
   tracked: { rule: 'spansMoment', momentMs: simMs(DAY, 10, 25), minTurnsAfter: 2 },
   chart3: 'utilization',
+  lesson: {
+    summary:
+      'Long conversations fill one GPU’s KV cache, and the scheduler starts preempting and recomputing work.',
+    takeaway:
+      'The ceiling is memory, not compute: nvidia-smi reads 100% while compute sits near 15%, and requests served hold level while TTFT p99 climbs to minutes. Watch KV cache use; utilization and throughput won’t warn you.',
+  },
+  // Three hours around 10:00: the lead-in, the full pool, and the drain by about 11:15.
+  chartWindowMs: 3 * HOUR_MS,
   drawer: [
     {
       param: 'outputTokensMedian',

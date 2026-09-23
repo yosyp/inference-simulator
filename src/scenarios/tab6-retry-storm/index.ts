@@ -16,7 +16,7 @@
 
 import type { Patch, PatchTemplate, SimConfig } from '../../engine/api.ts';
 import { REPLICA_STATE } from '../../engine/results.ts';
-import { HOUR_MS, SECOND_MS, simMs } from '../../engine/time.ts';
+import { HOUR_MS, MINUTE_MS, SECOND_MS, simMs } from '../../engine/time.ts';
 import type { StatusSnapshot } from '../../playback/types.ts';
 import type { Scenario } from '../schema.ts';
 
@@ -24,10 +24,10 @@ import type { Scenario } from '../schema.ts';
 export const CRASHED_REPLICA = 1;
 /** Wednesday 10:30, the peak of the busiest day (diurnal knot 10:30, day multiplier 1.1). */
 export const LESSON_MOMENT_MS = simMs(2, 10, 30);
-/** 90 s before the crash: Play shows the busy, healthy fleet first. Server A entries by ~12:00 (K30). */
-export const ENTRY_MS = LESSON_MOMENT_MS - 90 * SECOND_MS;
-/** 10×: request dots stay visible (05 §5), and the storm and recovery play in about 20 s. */
-export const ENTRY_SPEED = 10;
+/** 5 minutes before the crash: Play shows the busy, healthy fleet first. Server A entries by ~12:00 (K30). */
+export const ENTRY_MS = LESSON_MOMENT_MS - 5 * MINUTE_MS;
+/** 50×: the crash comes 6 s after Play, and the storm and recovery play in about 5 s more. */
+export const ENTRY_SPEED = 50;
 /** The named fix's admission cap per Ready replica (K9). */
 export const FIX_ADMISSION_LIMIT = 64;
 
@@ -159,6 +159,14 @@ export const scenario: Scenario = {
   // third attempt is served.
   tracked: { rule: 'spansMoment', momentMs: LESSON_MOMENT_MS + 30 * SECOND_MS, minTurnsAfter: 2 },
   chart3: 'offeredVsAdmitted',
+  lesson: {
+    summary:
+      'A replica crashes at the peak, and clients with a short timeout retry at once, turning a lost quarter of capacity into a retry storm.',
+    takeaway:
+      'Immediate retries multiply load exactly when capacity drops, and the GPUs burn time on requests whose clients have already given up. Backoff with jitter plus an admission limit keeps the surviving replicas serving useful work.',
+  },
+  // An hour around the crash: the busy peak, the storm, and the 10 minutes of lower goodput after.
+  chartWindowMs: HOUR_MS,
   drawer: [
     {
       param: 'timeoutToFirstTokenMs',
@@ -214,12 +222,10 @@ export const scenario: Scenario = {
   ],
   copy: {
     whatToWatch: [
-      'Server A’s four replicas are close to capacity at Wednesday’s 10:30 peak: about 9 requests a second, with TTFT p99 around 4–5 s. Each client gives up if no token arrives within 10 s, then retries at once, up to 3 times.',
-      'At 10:30 replica 2 crashes. For 10 s the router still sends it every fourth request, and those fail at once. Then it is marked down and a standby host loads it; it is Ready again at 10:32. Until then, three replicas face the whole peak.',
-      'Queues grow until time to first token passes 10 s. Clients time out, the server aborts their requests, and the clients send them again. On the Offered vs. admitted chart, offered load climbs from about 9 to over 20 requests a second, nearly 4× first attempts, and all of it is admitted. TTFT p99 sits at the 10 s timeout for 3 minutes.',
-      'Admitted is not served. About two-thirds of the timed-out requests were already in prefill, so the GPUs spend the storm on prompts whose clients have left. In the 2 minutes after the crash the fleet serves about a third of its normal requests. With the fix, the same three replicas serve three-quarters.',
-      'When a turn’s retries run out, the analyst abandons the conversation: about 350 in 3 minutes. They send no more turns. That is part of why the storm ends soon after the replica returns, and why requests served stay about 10% low for the next 10 minutes.',
-      'Routing is round-robin here. Under least outstanding, the crashed replica would look idle until it is marked down and draw nearly every request.',
+      'Server A’s four replicas run close to capacity at Wednesday’s 10:30 peak: about 9 requests a second, TTFT p99 around 4–5 s. Clients give up if no token arrives within 10 s, then retry at once, up to 3 times.',
+      'At 10:30 replica 2 crashes; a standby host has it Ready again at 10:32. Meanwhile three replicas face the whole peak, and queues grow until TTFT passes 10 s. Clients time out, the server aborts their requests, and they are sent again. Offered load climbs from about 9 to over 20 requests a second, and all of it is admitted.',
+      'Admitted is not served. About two-thirds of the timed-out requests were already in prefill, so the GPUs spend the storm on prompts whose clients have left: in the 2 minutes after the crash the fleet serves about a third of its normal requests. With the fix, the same three replicas serve three-quarters.',
+      'When a turn’s retries run out, the analyst abandons the conversation: about 350 in 3 minutes. That sheds load, which is part of why the storm ends soon after the replica returns.',
     ],
     tryThis: [
       'Press Back off and cap admissions before 10:30, then play. The router admits at most 64 requests per Ready replica and rejects the rest at once; clients retry after a random wait of up to 10, 20, then 40 s. Admitted load stays at 7–9 a second, no more than before the crash; TTFT p99 stays under 9 s, and about 100 conversations are abandoned instead of 350.',
@@ -245,7 +251,10 @@ export const scenario: Scenario = {
       render: (s) => {
         const f = s.fleet;
         if (!(f.amplification >= 1.3) || f.rejectedPerS >= 0.1 * f.offeredPerS) return null;
-        return `Retry storm: offered load is ${oneDecimal(f.amplification)}× first attempts, and all of it is admitted.${ttftP99(s)}${abandonedToday(s)}`;
+        const served = Number.isFinite(f.finishedPerS)
+          ? ` Offered ${perS(f.offeredPerS)}, served ${perS(f.finishedPerS)}.`
+          : '';
+        return `Retry storm: offered load is ${oneDecimal(f.amplification)}× first attempts, and all of it is admitted.${served}${ttftP99(s)}${abandonedToday(s)}`;
       },
     },
     {

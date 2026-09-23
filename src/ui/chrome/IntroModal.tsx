@@ -10,7 +10,7 @@ export const INTRO_TITLE = 'Inference Simulator';
 export const INTRO_PARAGRAPHS: readonly string[] = [
   'An interactive model of serving a large language model inside a fixed-capacity enclave: a set number of GPUs, a known analyst population, and no way to add hardware when load spikes.',
   'Built for the engineers, operators, and program staff who run LLM systems on constrained, high-side networks.',
-  'Calibrated on Llama 3.1 8B running on two NVIDIA A100 40GB GPUs; larger configurations are extrapolated.',
+  'Modelled on Llama 3.1 8B on NVIDIA A100 40GB GPUs; larger configurations are extrapolated. The numbers are provisional until benchmarks land.',
   'The tabs are a teaching order, and every parameter is adjustable.',
 ];
 

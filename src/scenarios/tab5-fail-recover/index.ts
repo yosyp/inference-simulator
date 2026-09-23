@@ -124,14 +124,23 @@ export const scenario: Scenario = {
     { kind: 'event', atMs: CRASH_MS, event: { type: 'crash', replica: CRASHED_REPLICA } },
   ],
   lessonMoment: { atMs: CRASH_MS, label: `Replica ${CRASHED_REPLICA + 1} crashes` },
-  // 12 s of wall time to the crash; the replacement rejoins about 12 s later.
-  entry: { atMs: CRASH_MS - 2 * MINUTE_MS, speed: 10 },
+  // 5 simulated minutes before the crash at 50×: 6 s of wall time; the replacement rejoins about
+  // 2.5 s after the crash.
+  entry: { atMs: CRASH_MS - 5 * MINUTE_MS, speed: 50 },
   trigger: {
     label: `Crash replica ${CRASHED_REPLICA + 1}`,
     patch: { kind: 'event', event: { type: 'crash', replica: CRASHED_REPLICA } },
   },
   tracked: { rule: 'spansMoment', momentMs: CRASH_MS, minTurnsAfter: 3 },
   chart3: 'perReplicaLoad',
+  lesson: {
+    summary:
+      'One of eight replicas crashes and is replaced, while session affinity uses mod-N hashing.',
+    takeaway:
+      'Losing a replica costs more than its share of capacity: mod-N hashing moves most conversations away from their cached history, twice, once at the crash and again at the rejoin. Consistent hashing moves only the lost replica’s eighth.',
+  },
+  // An hour around the crash: the steady morning, the outage and rejoin, and the settling.
+  chartWindowMs: HOUR_MS,
   drawer: [
     {
       param: 'hashScheme',
@@ -167,11 +176,10 @@ export const scenario: Scenario = {
   ],
   copy: {
     whatToWatch: [
-      'Eight replicas, one per GPU, serve 3,200 analysts. Session affinity hashes each conversation’s ID, mod 8, to pick its replica, so follow-ups find their history in that replica’s KV cache. About 80% of returning turns’ prompt tokens are cache hits.',
-      `At 09:15 ${CRASHED_LABEL} crashes, and its requests fail at once. The router can’t see a crash until mark-down 10 s later, so it keeps sending that replica its sessions. Clients retry with backoff.`,
-      'After mark-down, mod-N hashes over the 7 survivors, and about 7 in 8 conversations change replica. Their next turn finds no history there and prefills the whole conversation again. For about a minute the fleet does more than twice its usual prefill work, and TTFT mean nearly triples. Losing 1 of 8 replicas costs far more than 1/8 of capacity.',
-      'The replacement host loads weights (about 25 s), starts its engine (about 90 s), and rejoins at 09:17 with an empty KV cache. Mod-N moves most conversations again, back to replicas that have mostly evicted their history, and TTFT rises a second time. By 09:20 it has mostly settled.',
-      'The tracked analyst’s replica never crashed, but mod-N moved their conversation twice, and each move re-prefilled it. On the latency chart, the black line is the worst replica’s TTFT p99; the fleet’s p99 sits above most replicas’ own, because the slowest replicas set the tail.',
+      'Eight replicas serve 3,200 analysts. Session affinity hashes each conversation’s ID, mod 8, to pick its replica, so about 80% of a follow-up’s prompt tokens are already in that replica’s KV cache.',
+      `At 09:15 ${CRASHED_LABEL} crashes. For 10 s, until it is marked down, the router keeps sending it requests, which fail; clients retry with backoff. Then mod-N hashes over 7 replicas, and about 7 in 8 conversations move. Each moved follow-up prefills its whole history again: for about a minute the fleet does more than twice its usual prefill work, and TTFT mean nearly triples.`,
+      'The replacement loads weights and starts its engine, and rejoins at 09:17 with an empty cache. Mod-N moves most conversations again, and TTFT rises a second time; by 09:20 it has mostly settled. The tracked analyst’s replica never crashed, yet their conversation moved twice.',
+      'On the latency chart, the black line is the worst replica’s TTFT p99; the fleet’s p99 sits above most replicas’ own, because the slowest replicas set the tail. Losing 1 of 8 replicas costs far more than 1/8 of capacity.',
     ],
     tryThis: [
       `In Parameters, set Hash scheme to Consistent. The switch itself remaps conversations, so play a few minutes, then press Crash ${CRASHED_LABEL}. Only its conversations move, about 1 in 8, and TTFT rises much less.`,

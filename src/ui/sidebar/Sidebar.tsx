@@ -1,4 +1,5 @@
-// The sidebar (05 §8, K17): the tab's static text carries the lesson for a self-serve visitor,
+// The sidebar (05 §8, K17): the tab's static text carries the lesson for a self-serve visitor
+// (a boxed summary and takeaway under the title, then what to watch and what to try),
 // with the live status line (Live) or the rollup table (High side, 05 §9), and the calibration
 // footnote.
 
@@ -24,7 +25,7 @@ export interface SidebarProps {
 }
 
 export function Sidebar({ store, scenario, mode, calibration, rollup, onShowIntro }: SidebarProps) {
-  const { copy } = scenario;
+  const { copy, lesson } = scenario;
   const id = useId();
   return (
     <div className="flex min-h-full flex-col gap-4 px-4 py-3">
@@ -48,6 +49,22 @@ export function Sidebar({ store, scenario, mode, calibration, rollup, onShowIntr
           {scenario.preset.basis === 'extrapolated' ? 'Extrapolated' : 'Measured hardware'}
         </p>
       </div>
+
+      {lesson && (
+        <section
+          aria-labelledby={`${id}-lesson`}
+          className="flex flex-col gap-1 rounded border border-l-4 border-border-strong border-l-focus bg-surface-muted px-3 py-2.5"
+        >
+          <h3
+            id={`${id}-lesson`}
+            className="text-xs font-semibold tracking-wide text-ink-subtle uppercase"
+          >
+            The lesson
+          </h3>
+          <p className="text-sm text-ink">{lesson.summary}</p>
+          <p className="text-sm font-medium text-ink">{lesson.takeaway}</p>
+        </section>
+      )}
 
       <section aria-labelledby={`${id}-watch`} className="flex flex-col gap-1.5">
         <h3 id={`${id}-watch`} className="text-sm font-semibold">

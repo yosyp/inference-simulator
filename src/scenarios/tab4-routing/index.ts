@@ -168,9 +168,9 @@ export const scenario: Scenario = {
   sim: routingSim,
   baselinePatches: [{ kind: 'set', atMs: LESSON_MS, changes: { routingPolicy: 'roundRobin' } }],
   lessonMoment: { atMs: LESSON_MS, label: 'The router switches to round-robin' },
-  // 2 simulated minutes before the switch at 10×: 12 s of wall time, with two of the tracked
-  // analyst's turns staying on one replica first. 10× is the fastest speed that still draws dots.
-  entry: { atMs: LESSON_MS - 2 * MINUTE_MS, speed: 10 },
+  // 5 simulated minutes before the switch at 50×: 6 s of wall time, with the tracked analyst's
+  // turns staying on one replica first. Above 10× the canvas draws aggregate flow, not dots.
+  entry: { atMs: LESSON_MS - 5 * MINUTE_MS, speed: 50 },
   trigger: {
     label: 'Switch to round-robin',
     patch: { kind: 'set', changes: { routingPolicy: 'roundRobin' } },
@@ -182,6 +182,14 @@ export const scenario: Scenario = {
   // A conversation that spans the switch with at least four turns after it.
   tracked: { rule: 'spansMoment', momentMs: LESSON_MS, minTurnsAfter: 4 },
   chart3: 'perReplicaLoad',
+  lesson: {
+    summary:
+      'Two replicas switch from session affinity to round-robin at the morning peak, and follow-up turns start landing on the replica without their history.',
+    takeaway:
+      'Each replica caches only the conversations it served, so the most even routing is not the fastest. Keeping a conversation on its replica turns a follow-up’s first token from several hundred milliseconds into tens, at the cost of less even load.',
+  },
+  // Two hours around the switch: an hour of affinity, then an hour of round-robin.
+  chartWindowMs: 2 * HOUR_MS,
   drawer: [
     {
       param: 'routingPolicy',

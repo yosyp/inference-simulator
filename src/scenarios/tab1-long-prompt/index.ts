@@ -18,10 +18,10 @@ export const LONG_PROMPT_OUTPUT_TOKENS = 600;
 
 /** Tuesday 11:00:05, 7 s after the analyst's fifth turn of a conversation finishes (seed 20). */
 export const LESSON_MOMENT_MS = simMs(1, 11, 0, 5);
-/** 4 s before that fifth turn arrives, so Play shows a normal turn first. */
-export const ENTRY_MS = simMs(1, 10, 59, 45);
-/** 1×: the analyst's wait is felt in real time, and dots are legible (05 §5). */
-export const ENTRY_SPEED = 1;
+/** 5 minutes before: at 50× that is 6 s of Play, with a normal turn just before the moment. */
+export const ENTRY_MS = simMs(1, 10, 55, 5);
+/** 50×, like every tab: the charts fill quickly. At 1× the dots and the analyst's wait are legible. */
+export const ENTRY_SPEED = 50;
 
 const longPrompt: PatchTemplate = {
   kind: 'event',
@@ -115,6 +115,13 @@ export const scenario: Scenario = {
   entry: { atMs: ENTRY_MS, speed: ENTRY_SPEED },
   trigger: { label: 'Send a 32k-token prompt', patch: longPrompt },
   tracked: { rule: 'fixed', analyst: 0 },
+  lesson: {
+    summary: 'One analyst on one GPU sends a 32,000-token prompt among their normal short turns.',
+    takeaway:
+      'Time to first token grows with prompt length: 5 s instead of 20 ms here. Time per output token barely moves, because each decode step mostly reads the model’s weights, not the prompt.',
+  },
+  // Two hours around the long prompt: enough normal turns beside it to compare.
+  chartWindowMs: 2 * HOUR_MS,
   chart3: 'utilization',
   drawer: [
     {
@@ -133,10 +140,9 @@ export const scenario: Scenario = {
   copy: {
     whatToWatch: [
       'One analyst on one GPU. On Tuesday at 11:00 they paste a 32,000-token document. Their normal turns prefill only a few hundred new tokens each; earlier turns stay in the cache.',
-      'Time to first token (TTFT) is prefill: the GPU processes the whole prompt before the first output token. Normal turns wait mostly 20–50 ms. The long prompt waits about 5 s, and its dot stays in prefill that long. On the latency chart, each dot is one request’s TTFT.',
+      'Time to first token (TTFT) is prefill: the GPU processes the whole prompt before the first output token. Normal turns wait mostly 20–50 ms. The long prompt waits about 5 s; switch to 1× just before 11:00 to watch its dot sit in prefill that long. On the latency chart, each dot is one request’s TTFT.',
       'Time per output token (TPOT) rises only from about 17 ms to 20 ms. Each decode step reads all 16 GB of weights, plus the KV cache for every token of context. At 32,000 tokens the KV cache is about 4 GB, so each step reads about a quarter more.',
-      'The memory chart shows that KV cache: about 23% of the pool while the long prompt runs. On the utilization chart, decode keeps the GPU 100% busy by nvidia-smi while compute stays under 1%. Decode waits on memory, not arithmetic; only prefill raises compute.',
-      'Across the day the GPU is busy about 1% of the shift. One analyst cannot keep it busy.',
+      'The memory chart shows that KV cache: about 23% of the pool while the long prompt runs. On the utilization chart, decode keeps the GPU 100% busy by nvidia-smi while compute stays under 1%: decode waits on memory, not arithmetic. Across the day the GPU is busy about 1% of the shift.',
     ],
     tryThis: [
       'Raise Message length to 4,000 tokens, then play to the next conversation at 12:22. Its turns take several hundred ms to first token instead of 20 ms.',

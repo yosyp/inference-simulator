@@ -74,8 +74,8 @@ describe('tab 6: retry storm', () => {
       event: { type: 'crash', replica: CRASHED_REPLICA },
     });
     expect(timeOfDayMs(scenario.entry.atMs)).toBeLessThanOrEqual(12 * HOUR_MS); // Server A (K30)
-    expect(entryToMomentWallS(scenario)).toBeLessThanOrEqual(45); // §7.3, all tabs: 9 s
-    // The storm's worst 2 minutes also play within 45 s: 21 s.
+    expect(entryToMomentWallS(scenario)).toBeLessThanOrEqual(45); // §7.3, all tabs: 6 s
+    // The storm's worst 2 minutes also play within 45 s: 8.4 s.
     const stormShownMs = C + 2 * MINUTE_MS - scenario.entry.atMs;
     expect(stormShownMs / scenario.entry.speed / 1000).toBeLessThanOrEqual(45);
   });

@@ -50,6 +50,23 @@ describe('Sidebar', () => {
     ).toEqual(scenario.copy.tryThis);
   });
 
+  it('boxes the lesson under the title when the scenario has one', () => {
+    current = createTestStore();
+    const base = testScenarios()[0]!;
+    const lesson = { summary: 'What the tab shows.', takeaway: 'What to remember.' };
+    render(
+      <Sidebar
+        store={current.store}
+        scenario={{ ...base, lesson }}
+        mode="live"
+        calibration={calibration}
+      />,
+    );
+    const box = screen.getByRole('region', { name: 'The lesson' });
+    expect(box).toHaveTextContent(lesson.summary);
+    expect(box).toHaveTextContent(lesson.takeaway);
+  });
+
   it('shows the live status line in Live mode, not the rollup', () => {
     setup('live');
     const status = screen.getByRole('region', { name: 'Live status' });

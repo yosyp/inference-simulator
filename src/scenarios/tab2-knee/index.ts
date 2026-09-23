@@ -116,6 +116,13 @@ export const scenario: Scenario = {
   trigger: { label: 'Raise arrivals 50% for an hour', patch: { kind: 'event', event: spike } },
   tracked: { rule: 'spansMoment', momentMs: LESSON_MOMENT_MS, minTurnsAfter: 2 },
   chart3: 'utilization',
+  lesson: {
+    summary: 'One GPU shared by 800 analysts is pushed close to what it can serve for an hour.',
+    takeaway:
+      'Near capacity, the slowest requests wait many times longer while the average barely moves: p99 time to first token reached 7.6 s against a 0.6 s mean. Watch p99, not the mean, and keep peak load below the knee.',
+  },
+  // Three hours around 10:00: the calm hour before, the spike hour, and the recovery.
+  chartWindowMs: 3 * HOUR_MS,
   drawer: [
     {
       param: 'loadMultiplier',

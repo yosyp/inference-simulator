@@ -50,9 +50,9 @@ describe('tab 4 · routing', { timeout: 20_000 }, () => {
   it('shows the tracked analyst moving replicas within 45 s of play from the entry point', () => {
     expect(dayOf(LESSON_MS)).toBeLessThanOrEqual(3); // Monday to Thursday (K2)
     expect(scenario.entry.atMs).toBeLessThan(LESSON_MS);
-    expect(entryToMomentWallS(scenario)).toBeLessThanOrEqual(45); // 12 s
+    expect(entryToMomentWallS(scenario)).toBeLessThanOrEqual(45); // 6 s
 
-    // The canvas lists the tracked analyst's turns so far. By 45 s of play: returning turns that
+    // The turns the tracked analyst sends after Play. By 45 s of play: returning turns that
     // stayed on one replica before the switch, then at least two that moved, each slower to first
     // token than any before. (Seed 4: 32–60 ms before; 573 and 824 ms after.)
     const r = roundRobin();
@@ -61,7 +61,7 @@ describe('tab 4 · routing', { timeout: 20_000 }, () => {
       (q) =>
         q.analyst === r.trackedAnalyst &&
         q.turn >= 2 &&
-        q.arriveMs >= scenario.entry.atMs - 2 * MINUTE_MS &&
+        q.arriveMs >= scenario.entry.atMs &&
         q.arriveMs < until,
     );
     const ttft = (q: (typeof mine)[number]) => q.firstTokenMs - q.arriveMs;
