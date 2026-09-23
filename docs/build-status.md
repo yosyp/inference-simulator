@@ -12,7 +12,7 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | E3 Cost model | merged | main | Batch-1 TPOT +5% at 8k, +20% at 32k, +77% at 122,880 (K3 holds); TTFT 38 s at 120k. Tab 3 compute-util bound tightened in §7.3. |
 | E4b KV fast path | running | | Cycle cost ~140 ns → ≤ 30 ns, same API (G1) |
 | E4 KV blocks | merged | main | Recipe at the top of `src/engine/kv/index.ts`; ~9 µs per request lifecycle; warm-pool clone 0.31 ms / 310 KiB. Free-block order follows vLLM ≥0.26 (0.20.1 differs by ~1 partial block per request; one-line change if parity matters). |
-| E5 Scheduler | running | | Resumed after a transient API error |
+| E5 Scheduler | merged | main | `replicaModule`; `createReplicaModule({ eventJumping: false })` for E10; `harness.ts`/`workload.ts` for tests. Jumping = per-step over 100 seeds; ~19k sim-s/wall-s per replica (tsx). K32. meterSync topic added so E7 samples exact KV. |
 | E6 Load generator | merged | main | `loadModule`, `sessionPlan`; ~4 requests/session; session ids are sparse (candidate indices; extras ≥ 2^31) — never size storage by session count. C2: tab 3's 'long conversations' and tab 2's rate step are lasting 'set' patches today (they carry into later days); decide with the author whether a one-shot workload InjectedEvent is needed. |
 | E7 Router | merged | main | Admission counts admitted-not-ended (incl. router overhead); no routable replica → reject. C3: use virtualNodesPerReplica ≥ 128 (64 lets one replica own ~15.6% of the ring). Signal refresh runs all day (~86k events at 1 s). |
 | E8 Failure | running | | Started early: only emits replicaState, which E5 and E7 consume |

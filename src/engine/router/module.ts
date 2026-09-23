@@ -95,7 +95,9 @@ export function admissionCap(state: DayState): number {
 }
 
 /** Copies live outstanding counts and KV fractions into the signals policies read. */
-export function refreshSignals(state: DayState): void {
+export function refreshSignals(state: DayState, ctx: Ctx): void {
+  // Replicas integrate KV usage lazily inside a step span; bring it up to now before sampling.
+  ctx.notify(TOPIC.meterSync, -1);
   const s = state.router;
   const kv = state.shared.meters.replica.kvUsed;
   for (let r = 0; r < s.replicas; r++) {
@@ -111,7 +113,7 @@ function choose(state: DayState, slot: RequestSlot, ctx: Ctx): ReplicaId {
   const t = state.shared.requests;
   const seed = ctx.input.config.seed;
   const day = ctx.input.day;
-  if (p.signalRefreshMs <= 0) refreshSignals(state);
+  if (p.signalRefreshMs <= 0) refreshSignals(state, ctx);
   const hash = policyUsesHash(p) ? sessionHash(seed, day, t.session[slot]!) : 0;
   const tieU = policyCanTie(p)
     ? u01(
@@ -275,7 +277,7 @@ export const routerModule = defineModule({
       priority: PRIORITY.router + 1,
       handle(state, _ev, ctx) {
         state.router.refreshEv = NO_EVENT;
-        refreshSignals(state);
+        refreshSignals(state, ctx);
         scheduleRefresh(state, ctx);
       },
     },

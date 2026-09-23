@@ -85,4 +85,10 @@ export const TOPIC = {
    * the terminal row (at requestEnded) itself, so notices for those states are optional.
    */
   requestState: 7,
+  /**
+   * Readers of lazily integrated meters (e.g. E7 sampling kvUsed at a signal refresh) send this first,
+   * so owners bring them up to ctx.nowMs. a = ReplicaId, or -1 for every replica. E5 subscribes; it may
+   * apply the elapsed part of a step span but never ends requests or sends lifecycle notices here.
+   */
+  meterSync: 8,
 } as const;
