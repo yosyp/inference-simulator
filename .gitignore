@@ -1,0 +1,30 @@
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Terraform (06-deployment §4)
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+
+# Python (benchmarks)
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+
+# Claude Code agent worktrees
+.claude/worktrees/

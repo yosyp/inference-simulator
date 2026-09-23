@@ -41,13 +41,15 @@ F2 writes these as TypeScript types with doc comments on `main` before parallel 
 
 | Contract | File | Defines |
 |---|---|---|
-| Calibration | `src/data/calibration.ts` | The type of `calibration.json` (03 §8), including `status`; a runtime validator; the build-time import of `benchmarks/derived/calibration.json` |
-| Scenario | `src/scenarios/schema.ts` | One tab: preset and label, seed, analysts per replica, workload distributions, shift hours, client, router, failure, engine overrides, lesson moment, entry point (time and speed), trigger (a patch), tracked-analyst rule, chart 3 kind, drawer parameter descriptors, copy ("What to watch", "Try this"), status templates |
-| Patch | `src/engine/api.ts` | A change at time t. It is either lasting (a parameter change, which also applies to later days) or one-shot (an injected event: crash, long prompt, rate step, which applies to that day only) (K21). |
-| Engine API | `src/engine/api.ts` | Create a day run from (scenario, calibration, day, patches); `advance(untilMs)` returns a result chunk; `checkpoint()` and `restore()`. All state is plain data (04 §3). |
-| Result chunk | `src/engine/results.ts` | Columnar layout: per-bucket metrics per replica and for the fleet (02 §11); histogram layout and the merge and percentile functions; per-request records or detail windows; replica state transitions; marker events; the tracked-analyst trace; High-side rollup rows |
-| Worker protocol | `src/worker/protocol.ts` | Main to worker: `init`, `focus` (the playhead's day), `fork`, `reset`, `requestDetail`, `track`. Worker to main: `chunk`, `dayComplete`, `progress`, `error`. Large payloads travel as transferable buffers. |
-| Playback store | `src/playback/types.ts` | Playhead, speed, playing, mode (Live or High side), computed ranges, fork markers, tracked analyst; a subscription outside React for the canvas; selectors for React |
+| Time | `src/engine/time.ts` | `SimMs` (ms from Monday 00:00), `DayIndex`, day and rollup-delivery helpers |
+| Calibration | `src/engine/calibration.ts`, loaded by `src/data/calibration.ts` | The type of `calibration.json` (03 §8) including `status`, plus the GPU and model constants the cost model needs; `parseCalibration` validator. The engine takes a Calibration as a parameter; only `src/data` imports the JSON. |
+| Engine API | `src/engine/api.ts` | `SimConfig` (fixed per scenario) with `TunableParams` (drawer-tunable); `Patch` (lasting `set` or one-shot `event`, K21) and `PatchTemplate`; `DayRunInput`, `DayRun` (`advance`, `checkpoint`), `Engine` (`createDayRun`, `restoreDayRun`, `sessionPlan`) |
+| Histograms | `src/engine/histogram.ts` | Log-spaced bin specs per metric, `binIndex`, exact merge, `quantile`. Shared by E9 and the charts. |
+| Result chunk | `src/engine/results.ts` | Columnar `ResultChunk`: scalar buckets (metric list with aggregation kinds), histogram buckets, request records and transitions (scope `all` or `tracked`), replica events, `RollupRow`; allocation helpers and `chunkTransferables` |
+| Worker protocol | `src/worker/protocol.ts` | `MainToWorker` and `WorkerToMain` messages, `WorkerScenario`, tracked-analyst rules, and the fork cut rule (documented at the top of the file) |
+| Playback and view model | `src/playback/types.ts` | `PlaybackStore`, `PlaybackState`, `ResultsIndex` (the queries renderers use), and view data: `SceneState` for the canvas, `SeriesData`/`QuantileData`/`RequestPoints` for charts, `StatusSnapshot` for the status line |
+| Scenario | `src/scenarios/schema.ts` | `Scenario` (preset, `SimConfig`, baseline patches, lesson moment, entry point, trigger, named fix, tracked rule, chart 3 kind, drawer parameters, copy, status templates) and `toWorkerScenario` |
+| Fixtures | `src/fixtures/` | `makeFixtureChunks` (contract-shaped chunks for U2), `createFakeIndex` (an analytic `ResultsIndex` for renderers), `fixtureScenarios` (six placeholder tabs) |
 
 Units and naming: simulated time is milliseconds from Monday 00:00, with no time zones. Put units in names (`ttftMs`, `kvTokens`, `weightBytes`).
 
@@ -72,7 +74,7 @@ Every WP lists **Depends on**, **Owns** (the paths it may edit), **Scope**, and 
 
 **F2 · Contracts, provisional calibration, fixtures**
 - **Depends on:** F1.
-- **Owns:** the contract files in §4, `benchmarks/derived/calibration.json`, `benchmarks/derived/calibration.provisional.md`, `scripts/fixtures/`.
+- **Owns:** the contract files in §4, `benchmarks/derived/calibration.json`, `benchmarks/derived/calibration.provisional.md`, `src/fixtures/`.
 - **Scope:**
   - Write the §4 contracts.
   - Write the provisional calibration in the 03 §8 shape with `"status": "provisional"`:
@@ -261,6 +263,14 @@ UI WPs build against the F2 fixtures until E11 lands, then switch to the real en
   - Fork markers.
   - The canvas subscribes outside React; React components use throttled selectors.
 - **Done when:** unit tests with the fake engine cover play, pause, speed, scrub, night skip, buffering hold, fork (history before t kept, marker recorded), and reset.
+
+**U8 · Results index** (split from U2 at kickoff so the two run in parallel)
+- **Depends on:** F2. **Owns:** `src/playback/index/`.
+- **Scope:** `createResultsStore(replicas)` implementing `ResultsStore` and `ResultsIndex` (`src/playback/types.ts`) over stored chunks:
+  - Per-day chunk storage with binary search by time; the fork cut rule; revision-free (U2 filters stale messages).
+  - `scalarSeries` aggregates buckets to at most `columns` points using each metric's aggregation kind; `quantileSeries` merges histograms; NaN for uncomputed time.
+  - `requestPoints`, `sceneAt` (dots from transitions where detail exists, aggregate otherwise; the tracked analyst's requests always), `statusAt`, `rollup`, `completedDays`.
+- **Done when:** unit tests against fixture chunks cover aggregation per kind, quantiles against direct histogram merges, the cut rule, scene reconstruction at arbitrary times, and query cost on a full Server B week of fixture chunks (report timings).
 
 **U3 · Canvas renderer**
 - **Depends on:** U1, F2. **Owns:** `src/sim-view/`.
@@ -505,7 +515,7 @@ Integration is local (K19): one worktree and branch per WP, merged into `main` b
 | Wave | Starts when | WPs in parallel |
 |---|---|---|
 | 0 | Now | F1, then F2 |
-| 1 | F2 merged | S1, E1, E2, E3, E4, U1, U2, B1, I1, I2 |
+| 1 | F2 merged | S1, E1, E2, E3, E4, U1, U2, U8, B1, I1, I2 |
 | 2 | Wave-1 dependencies (E9 also waits for G1) | E5, E6, E7, E9, U3, U4, U5, U6, I3, I4, B2 (on approval) |
 | 3 | E5–E9 | E10, E11, E8, B3 |
 | 4 | E11 | C1, then C2; U7; then X1 (**G2**) |
@@ -530,6 +540,8 @@ flowchart LR
   E11 --> C1
   C1 --> C2
   C1 & E8 --> C3
+  F2 --> U8
+  U8 --> U7
   E11 & U5 & U7 & C2 & I4 --> X1
   X1 & C3 --> X2
   X2 --> X3

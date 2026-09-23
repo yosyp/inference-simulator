@@ -1,0 +1,12 @@
+.claude
+dist
+coverage
+node_modules
+pnpm-lock.yaml
+test-results
+playwright-report
+spikes
+benchmarks
+infra
+docs
+*.md
