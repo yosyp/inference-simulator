@@ -41,8 +41,11 @@ Only the integrator edits this file (00-build §6). Status: todo · running · r
 | I4 CSP smoke test | merged | main | `scripts/serve-prod.ts` + `e2e/`; optional steps marked IF PRESENT for X1 to harden; negative checks (inline style, blob worker, fetch) all fail as expected |
 | I5 First deploy | todo | | Author runs |
 | X1b Playback fixes and e2e | merged | main | `focus.prefetch` (protocol): lookahead no longer thins the playhead day's checkpoints; late-day fork on Server B 187 ms (was 1,567 ms). One clock (timeline). e2e steps are hard requirements; drawer step uses each tab's first control. P5 deferred. Scrubbing sends one focus per pointer move (not throttled). |
-| X1 Vertical slice | partial | main | Done: all components mounted; the app runs the real engine in a Web Worker; verify and e2e (real worker, prod CSP) pass. Left: scenario registry (after C2); keep one of the two clocks; harden e2e IF PRESENT steps; U2 should send `focus` on in-day seeks and not thin the playhead day's checkpoints on lookahead (else a late-day fork can miss P2); measure P5 in Chrome. |
-| X2–X5 | todo | | |
+| X1 Vertical slice | merged | main | All six tabs from the registry on the real engine in a Web Worker; hardened e2e passes under the production CSP. |
+| X2 Fleet integration | merged | main | Tabs 4–6 wired; headless Chromium first frames: tab1 0.24 s, tab2 0.58 s, tab3 0.45 s, tab4 0.70 s, tab5 1.93 s, tab6 0.11 s; no console errors. |
+| X3 Review pass | todo | | Needs the author (G2/G3). Known polish: per-scenario default chart zoom (tabs 4–6 spikes are thin at the whole-day window); trim long sidebar copy (tabs 5–6); DailyBars 'Computing…' wording; requests-served/min readout (tab 3); finishedPerS in the status snapshot (tab 6); E9 active-window emission (~30 MB/week of night zeros); P5 long-task trace; intro copy vs provisional calibration. |
+| X4 Calibration swap | todo | | Blocked on B2 (author: weights, free GPUs, approval). Every tab's lesson test will flag lessons that move. |
+| X5 Launch | todo | | Blocked on I5 (author: AWS bootstrap, secrets, subdomain, push, repo visibility). |
 
 ## Measurements
 
