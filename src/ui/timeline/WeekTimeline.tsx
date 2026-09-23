@@ -29,7 +29,7 @@ import type { Scenario } from '../../scenarios/schema.ts';
 import type { ComputedRange } from '../../worker/protocol.ts';
 import { Tooltip } from '../primitives/Tooltip.tsx';
 import { cx } from '../primitives/util.ts';
-import { colors, withAlpha } from '../theme/colors.ts';
+import { colors, cssVar, withAlpha } from '../theme/colors.ts';
 import { markerStyles } from '../theme/encodings.ts';
 import { describeComputed, dayAt, formatDayTime, rollupTicks } from './format.ts';
 import {
@@ -283,7 +283,7 @@ interface BandProps {
 }
 
 const lessonBandColor = withAlpha(colors['series-incident'], markerStyles.incident.bandAlpha);
-const forkDash = `repeating-linear-gradient(to bottom, ${markerStyles.fork.color} 0 3px, transparent 3px 6px)`;
+const forkDash = `repeating-linear-gradient(to bottom, ${cssVar('series-fork')} 0 3px, transparent 3px 6px)`;
 const DIVIDERS = Array.from({ length: WEEK_DAYS - 1 }, (_, i) => (i + 1) * DAY_MS);
 
 /** The bar itself: shifts and nights, day dividers, the computed strip, and marker lines. Decorative. */

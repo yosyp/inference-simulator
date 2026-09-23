@@ -23,8 +23,8 @@ export function LessonGlyph() {
 export function ForkGlyph() {
   return (
     <svg width="9" height="10" viewBox="0 0 9 10" aria-hidden data-glyph="flag">
-      <path d="M1.5 0.5V9.5" stroke={markerStyles.fork.color} strokeWidth="1.25" />
-      <path d="M1.5 0.75L8.25 3L1.5 5.25Z" fill={markerStyles.fork.color} />
+      <path d="M1.5 0.5V9.5" stroke={cssVar('series-fork')} strokeWidth="1.25" />
+      <path d="M1.5 0.75L8.25 3L1.5 5.25Z" fill={cssVar('series-fork')} />
     </svg>
   );
 }
