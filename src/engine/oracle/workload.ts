@@ -13,6 +13,9 @@
 //   batched tokens) with a burst of long prompts (up to 60k tokens) and outputs (up to 1,000), so
 //   long chunked prefills, long decode spans, and a large LRU are covered too.
 // - Some seeds run on Friday rather than Monday, so absolute times are large.
+// - About half the seeds turn on the cost terms outside the roofline (X4a): a per-decode-sequence
+//   step cost, a per-cached-token cost in the admitting step, and a request overhead between
+//   dispatch and scheduling (sometimes equal to the router overhead, so events tie).
 // The client's replica choices in randomWorkload are dropped: the router picks.
 
 import type { HashScheme, RoutingPolicy } from '../api.ts';
@@ -45,6 +48,8 @@ const F = {
   lockstep: 15,
   hotPrompt: 16,
   production: 17,
+  costTerms: 18,
+  requestOverhead: 19,
   at: 20,
   prompt: 21,
   output: 22,
@@ -72,7 +77,19 @@ export function oracleWorkload(seed: number, base: Calibration): OracleInput {
   const u = (field: number, index = 0) => u01(seed, Source.oracleWorkload, E10_KEY, field, index);
   const w = randomWorkload(seed, base);
   const production = u(F.production) < 0.1;
-  const cal = production ? base : w.cal;
+  const plain = production ? base : w.cal;
+  const cal =
+    u(F.costTerms) < 0.5
+      ? {
+          ...plain,
+          costModel: {
+            ...plain.costModel,
+            decodePerSeqMs: 0.097,
+            cachedTokenMs: 0.0059,
+            requestOverheadMs: pick(u(F.requestOverhead), [0, 1.5, 12, 18.8]),
+          },
+        }
+      : plain;
   const replicas = w.config.replicas === 2 || u(F.replicas) < 0.3 ? 2 : 1;
   const limit = u(F.limit) < 0.2 ? pick(u(F.limitValue), [2, 5, 20]) : null;
   const config = {

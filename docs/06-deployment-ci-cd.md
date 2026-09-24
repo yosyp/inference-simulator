@@ -65,6 +65,7 @@ flowchart LR
 | `ci.yml` | `push` (any branch) and `pull_request` (K19) | `contents: read` (no AWS) | Install, lint, typecheck, test, build, Playwright production-CSP smoke test, `terraform fmt -check` and `terraform validate` (no backend) |
 | `deploy.yml` | `push` to `prod` | `id-token: write`, `contents: read` | Install, lint, typecheck, test, build, smoke test → assume role via OIDC → `terraform init/plan/apply` (infra/site; plan runs immediately before apply, K20) → `aws s3 sync` with cache headers → CloudFront invalidation of `/index.html` |
 
+- Tests run in two tiers: CI on ordinary pushes and PRs runs `pnpm test:fast`, which skips the whole-day simulation tests (lesson assertions, worker, oracle; see `slowTests` in `vite.config.ts`). The `prod` ref, which gates deploys, runs the full suite. Contributors run `pnpm verify` (full) locally before pushing.
 - `deploy.yml` uses a concurrency group so deploys never overlap.
 - Third-party actions are pinned to full commit SHAs.
 - Fork PRs receive no OIDC tokens, so CI for them runs without AWS access regardless of configuration.

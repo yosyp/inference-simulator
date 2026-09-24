@@ -15,12 +15,14 @@
     "format": "prettier --write .",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "test:fast": "TEST_TIER=fast vitest run",
     "test:watch": "vitest",
     "test:oracle:long": "ORACLE_SEEDS=5000 vitest run --project node oracle",
     "e2e": "vite build && playwright test",
     "sim": "tsx scripts/sim.ts",
     "perf": "tsx scripts/perf.ts",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "d3-array": "^3.2.4",

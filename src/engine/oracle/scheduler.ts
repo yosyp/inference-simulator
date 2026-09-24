@@ -18,6 +18,9 @@
 //      max_num_seqs run and budget is left. The head goes in when blocks for its whole uncached
 //      prompt fit (E4 canAcquire over its longest cached prefix); only its first chunk is
 //      allocated. The first head that doesn't fit stops admission (FIFO, head-of-line).
+//   The step costs E3's stepTime, whose cached-token term counts the hits of step C's admissions.
+//   Request overhead (calibration requestOverheadMs > 0): a dispatched request is 'arriving' for
+//   that long before it joins the waiting queue; leaving Ready fails it after the waiting queue.
 //   Apply, at the end of the step, in this order (LRU contents depend on it):
 //   1. every decode-phase request has one more token; full blocks register, in admission order;
 //   2. decode requests that reached their output target finish, in admission order;
@@ -45,7 +48,7 @@ import {
 import { OUTCOME, REPLICA_STATE, REQUEST_STATE } from '../results.ts';
 import type { CounterTotals, StepRecord } from './types.ts';
 
-export const PHASE = { none: 0, waiting: 1, prefill: 2, decode: 3 } as const;
+export const PHASE = { none: 0, waiting: 1, prefill: 2, decode: 3, arriving: 4 } as const;
 
 export interface EngineLimits {
   kvPoolTokens: number;
@@ -81,6 +84,8 @@ export interface OReq {
   firstTokenMs: number;
   cachedTokens: number;
   preemptions: number;
+  /** Arriving phase: the handle of its eligibility (from scheduleEligible). */
+  eligibleHandle: number;
 }
 
 interface Chunk {
@@ -101,6 +106,8 @@ export interface Host {
   /** Queue this replica's step end or kick; returns a handle for cancelStep. */
   scheduleStep(r: number, atMs: number, kick: boolean): number;
   cancelStep(handle: number): void;
+  /** Queue the time the request overhead ends; returns a handle for cancelStep. */
+  scheduleEligible(req: OReq, atMs: number): number;
   transition(req: OReq, state: number, atMs: number): void;
   firstToken(req: OReq, atMs: number): void;
   /** The request ended here with an OUTCOME code; it was already taken out of the replica. */
@@ -111,6 +118,8 @@ export interface OReplica {
   r: number;
   state: number;
   pool: KvPool;
+  /** Dispatched, waiting out the request overhead, in dispatch order. */
+  arriving: OReq[];
   /** waiting[0] is the head. */
   waiting: OReq[];
   /** Admission order: the last entry is the most recently admitted. */
@@ -132,7 +141,8 @@ export interface OReplica {
 
 export function createReplica(r: number, pool: KvPool): OReplica {
   return {
-    ...{ r, state: REPLICA_STATE.ready, pool, waiting: [], running: [], mode: 'idle' },
+    ...{ r, state: REPLICA_STATE.ready, pool, arriving: [], waiting: [], running: [] },
+    mode: 'idle',
     ...{ handle: -1, clock: 0, t0: 0, stepMs: 0, flops: 0, decodes: 0, prefill: 0 },
     ...{ recomputed: 0, chunks: [] },
   };
@@ -259,6 +269,7 @@ export function compose(host: Host, rep: OReplica, now: number): void {
     addChunk(rep, req, prior, n);
   }
 
+  let cachedAdmitted = 0;
   // C. Admissions, FIFO with head-of-line blocking; none in a step that preempted.
   while (
     !preempted &&
@@ -293,6 +304,7 @@ export function compose(host: Host, rep: OReplica, now: number): void {
       count(host, rep, 'returningHitTokens', cached);
     }
     addChunk(rep, req, cached, n);
+    cachedAdmitted += cached;
     host.transition(req, REQUEST_STATE.prefill, now);
   }
 
@@ -302,6 +314,7 @@ export function compose(host: Host, rep: OReplica, now: number): void {
     if (req.phase === PHASE.decode) addDecodeSequence(desc, req.computed + 1);
   }
   for (const c of rep.chunks) addPrefillChunk(desc, c.prior, c.n);
+  desc.prefillCachedTokens = cachedAdmitted;
   if (desc.decodeSeqs === 0 && rep.chunks.length === 0) {
     if (hasWork(rep)) throw new Error(`oracle: replica ${rep.r} composed an empty step`);
     rep.mode = 'idle';
@@ -408,8 +421,23 @@ export function enqueue(host: Host, rep: OReplica, req: OReq, now: number): void
   req.generated = 0;
   req.hitTokens = 0;
   req.highWater = 0;
-  rep.waiting.push(req);
   host.transition(req, REQUEST_STATE.waiting, now);
+  const overheadMs = host.cal.costModel.requestOverheadMs;
+  if (overheadMs > 0) {
+    req.phase = PHASE.arriving;
+    rep.arriving.push(req);
+    req.eligibleHandle = host.scheduleEligible(req, now + overheadMs);
+    return;
+  }
+  eligible(host, rep, req, now);
+}
+
+/** The request overhead has passed (or there is none): the request joins the waiting queue. */
+export function eligible(host: Host, rep: OReplica, req: OReq, now: number): void {
+  const k = rep.arriving.indexOf(req);
+  if (k >= 0) rep.arriving.splice(k, 1);
+  req.phase = PHASE.waiting;
+  rep.waiting.push(req);
   if (rep.mode === 'idle') {
     // The first step is composed once the instant settles (priority late), so same-instant
     // dispatches share it.
@@ -421,7 +449,10 @@ export function enqueue(host: Host, rep: OReplica, req: OReq, now: number): void
 /** The client gave up: the request leaves at once. A step in flight keeps its cost. */
 export function cancel(host: Host, rep: OReplica, req: OReq, now: number): void {
   const output = req.generated;
-  if (req.phase === PHASE.waiting) {
+  if (req.phase === PHASE.arriving) {
+    rep.arriving.splice(rep.arriving.indexOf(req), 1);
+    host.cancelStep(req.eligibleHandle);
+  } else if (req.phase === PHASE.waiting) {
     rep.waiting.splice(rep.waiting.indexOf(req), 1);
   } else {
     leaveRunning(rep, req);
@@ -449,9 +480,11 @@ export function setState(host: Host, rep: OReplica, code: number, now: number): 
     const e = now - rep.t0;
     accrue(host, rep, e >= rep.stepMs ? 1 : e <= 0 ? 0 : e / rep.stepMs);
   }
-  const doomed = [...rep.running, ...rep.waiting];
+  const doomed = [...rep.running, ...rep.waiting, ...rep.arriving];
+  for (const req of rep.arriving) host.cancelStep(req.eligibleHandle);
   rep.running = [];
   rep.waiting = [];
+  rep.arriving = [];
   rep.chunks = [];
   if (rep.handle >= 0) host.cancelStep(rep.handle);
   rep.handle = -1;

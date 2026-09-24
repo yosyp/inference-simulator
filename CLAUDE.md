@@ -16,7 +16,9 @@ These exist once WP F1 has landed.
 pnpm install
 pnpm dev               # Vite dev server
 pnpm verify            # lint + typecheck + tests + build; must pass before handoff
-pnpm test [path]       # Vitest, including the 200-seed differential oracle
+pnpm test [path]       # Vitest, full suite, including the 200-seed oracle and whole-day simulations
+pnpm test:fast         # skips the whole-day simulation tests; what CI runs on non-prod pushes
+# A pre-push hook (.githooks/pre-push, enabled by `pnpm install`) runs `pnpm verify`.
 pnpm test:oracle:long  # 5,000 oracle seeds; run before merging engine timing changes
 pnpm e2e               # production build + Playwright smoke test under the production CSP
 pnpm sim <tab> [...]   # run a scenario headless and print its lesson summary

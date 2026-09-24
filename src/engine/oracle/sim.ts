@@ -37,6 +37,7 @@ import {
   compose,
   createReplica,
   endStep,
+  eligible,
   enqueue,
   setState,
   type EngineLimits,
@@ -60,6 +61,7 @@ const K = {
   refresh: 6,
   arrive: 7,
   kick: 8,
+  eligible: 9,
 } as const;
 
 interface Item {
@@ -136,6 +138,7 @@ export function runOracle(input: OracleInput, options: OracleOptions = {}): RunR
     ...{ outputTarget: s.outputTokens, systemPromptTokens: s.systemPromptTokens },
     ...{ phase: PHASE.none, blocks: [], registered: 0, computed: 0, target: 0, generated: 0 },
     ...{ hitTokens: 0, highWater: 0, firstTokenMs: NaN, cachedTokens: 0, preemptions: 0 },
+    eligibleHandle: -1,
   }));
   const followers: number[][] = specs.map(() => []);
   const timeoutEv = new Array<number>(specs.length).fill(-1);
@@ -185,6 +188,7 @@ export function runOracle(input: OracleInput, options: OracleOptions = {}): RunR
     scheduleStep: (r, t, kick) =>
       kick ? schedule(t, PRIORITY.late, K.kick, r) : schedule(t, PRIORITY.engine, K.stepEnd, r),
     cancelStep: unschedule,
+    scheduleEligible: (req, t) => schedule(t, PRIORITY.router, K.eligible, req.i),
     transition: (req, state, t) => res.transitions[req.i]!.push(t, state),
     firstToken(req, t) {
       res.firstTokenMs[req.i] = t;
@@ -321,6 +325,9 @@ export function runOracle(input: OracleInput, options: OracleOptions = {}): RunR
         break;
       case K.arrive:
         arrive(i);
+        break;
+      case K.eligible:
+        eligible(host, replicas[res.replica[i]!]!, reqs[i]!, now);
         break;
       case K.kick:
         if (replicas[i]!.mode !== 'kick') throw new Error(`oracle: stale kick on replica ${i}`);

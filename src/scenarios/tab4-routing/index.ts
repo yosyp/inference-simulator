@@ -12,11 +12,11 @@
 // between them at any time.
 //
 // The narrow window (02 §14 item 5): under affinity a history must survive its analyst's think
-// time in the 140k-token pool. That holds while each replica turns over its free cache more slowly
-// than analysts return. Measured on the provisional calibration at the lesson moment: returning-turn
-// hit rate 0.87 at a 60 s think-time median, 0.70 at 90 s, and 0.16 at 3 min, where affinity no
-// longer helps. So the load, turn sizes, and think time below sit together; change one and recheck
-// lessons.test.ts.
+// time in the 158,864-token pool. That holds while each replica turns over its free cache more
+// slowly than analysts return. Measured on the measured calibration (K36) over the hour after the
+// lesson moment, seeds 1–5: returning-turn hit rate 0.81–0.88 at a 60 s think-time median,
+// 0.30–0.40 at 90 s, and 0.12–0.13 at 3 min, where affinity no longer helps. So the load, turn
+// sizes, and think time below sit together; change one and recheck lessons.test.ts.
 
 import type { SimConfig } from '../../engine/api.ts';
 import { HOUR_MS, MINUTE_MS, SECOND_MS, simMs } from '../../engine/time.ts';
@@ -31,8 +31,8 @@ export const routingSim: SimConfig = {
   // the first four minutes after it (checked in lessons.test.ts).
   seed: 4,
   replicas: 2,
-  // 200 analysts per replica at 10 sessions each: about 0.3 requests/s and 7 running per replica at
-  // the peak. Busy enough to fill the canvas; light enough that histories survive (see above).
+  // 200 analysts per replica at 10 sessions each: about 0.35 requests/s and 5 in flight per replica
+  // at the peak. Busy enough to fill the canvas; light enough that histories survive (see above).
   analystsPerReplica: 200,
   shift: { startMs: 7 * HOUR_MS, endMs: 17 * HOUR_MS },
   diurnal: {
@@ -73,11 +73,14 @@ export const routingSim: SimConfig = {
     // Geometric mean 4 (c2). Longer conversations push the history past what the pool can hold.
     turnsPerSessionMean: 4,
     // Each turn adds ~1,000 tokens of history (message + answer), so a moved third turn
-    // recomputes ~2,000–3,000 tokens: several hundred ms instead of tens.
+    // recomputes ~2,000–3,000 tokens. Under round-robin a moved turn's TTFT p50 is 340–390 ms; one
+    // that stayed, 105–117 ms. The answer is 700 rather than 500 tokens because warm turns now pay
+    // 18.9 ms per request and 6.2 µs per cached token (K36), which narrows the gap; a larger
+    // history widens it again.
     messageTokensMedian: 300,
-    outputTokensMedian: 500,
-    // Reading a ~500-token answer and sending the next question. At 90 s affinity loses about
-    // a third of its hits; at 3 min, nearly all.
+    outputTokensMedian: 700,
+    // Reading a ~700-token answer and sending the next question. At 90 s affinity loses more
+    // than half of its hits; at 3 min, nearly all.
     thinkTimeMedianMs: 60_000,
     timeoutToFirstTokenMs: 60_000,
     retryPolicy: 'exponential',
@@ -90,7 +93,7 @@ export const routingSim: SimConfig = {
     hashScheme: 'modN',
     signalRefreshMs: 1_000,
     admissionLimitPerReplica: null,
-    // Equal weights: at 2 replicas this keeps ~98% of returning turns home while shedding some
+    // Equal weights: at 2 replicas this keeps 92–96% of returning turns home while shedding some
     // load from the busier replica.
     weightAffinity: 1,
     weightOutstanding: 1,
@@ -135,13 +138,14 @@ const statusTemplates: StatusTemplate[] = [
     },
   },
   {
-    // Heavy prefill: under round-robin, mostly history computed again on the other replica.
+    // Heavy prefill: under round-robin, mostly history computed again on the other replica. At
+    // 1,000 tokens/s it shows for about half of the 15 min after the switch and rarely before.
     id: 'prefill',
     priority: 10,
     render: (s) => {
       let top: StatusSnapshot['replicas'][number] | null = null;
       for (const r of s.replicas) {
-        if (r.prefillTokensPerS >= 800 && (!top || r.prefillTokensPerS > top.prefillTokensPerS)) {
+        if (r.prefillTokensPerS >= 1_000 && (!top || r.prefillTokensPerS > top.prefillTokensPerS)) {
           top = r;
         }
       }
@@ -186,7 +190,7 @@ export const scenario: Scenario = {
     summary:
       'Two replicas switch from session affinity to round-robin at the morning peak, and follow-up turns start landing on the replica without their history.',
     takeaway:
-      'Each replica caches only the conversations it served, so the most even routing is not the fastest. Keeping a conversation on its replica turns a follow-up’s first token from several hundred milliseconds into tens, at the cost of less even load.',
+      'Each replica caches only the conversations it served, so the most even routing is not the fastest. Keeping a conversation on its replica cuts a follow-up’s time to first token from several hundred milliseconds to about a hundred, at the cost of less even load.',
   },
   // Two hours around the switch: an hour of affinity, then an hour of round-robin.
   chartWindowMs: 2 * HOUR_MS,
@@ -228,7 +232,7 @@ export const scenario: Scenario = {
     whatToWatch: [
       'Each replica holds its own copy of the model and its own KV cache. A follow-up turn is fast only on the replica that still holds its conversation. On a replica that never served it, the whole conversation is prefilled again.',
       'Until Wednesday 10:30 the router uses session affinity, so each conversation stays on one replica. At 10:30 it switches to round-robin, which sends each request to the next replica in turn.',
-      'Watch the tracked analyst. After the switch, about half of their turns land on the other replica and are marked as moved. Those turns take several hundred milliseconds to first token instead of tens. A turn that goes back to a replica it used earlier finds part of its history there and recomputes only the rest.',
+      'Watch the tracked analyst. After the switch, about half of their turns land on the other replica and are marked as moved. Those turns take several hundred milliseconds to first token instead of about a hundred. A turn that goes back to a replica it used earlier finds part of its history there and recomputes only the rest.',
       'On the charts, fleet TTFT rises and the two replicas’ load lines move closer together. Least outstanding keeps them closer still, and its returning turns are just as slow. Affinity lets one replica run busier than the other at times; that is the price of keeping histories warm.',
     ],
     tryThis: [
