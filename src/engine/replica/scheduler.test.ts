@@ -1,7 +1,7 @@
 // Scheduling rules (02 §7 rules 1-5) and batch-1 timing against E3's reference helpers.
 
 import { describe, expect, it } from 'vitest';
-import raw from '../../../benchmarks/derived/calibration.json';
+import raw from '../../../benchmarks/derived/calibration.provisional.json';
 import { parseCalibration } from '../calibration.ts';
 import { batch1TpotMs, batch1TtftMs } from '../cost/index.ts';
 import { OUTCOME, REPLICA_STATE, REQUEST_STATE } from '../results.ts';

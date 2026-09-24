@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import raw from '../../../benchmarks/derived/calibration.json';
+import raw from '../../../benchmarks/derived/calibration.provisional.json';
 import { parseCalibration, type Calibration } from '../calibration.ts';
 import {
   decodeSpan,

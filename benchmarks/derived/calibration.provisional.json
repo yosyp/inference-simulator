@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "status": "provisional",
+  "source": { "runIds": [], "vllm": "0.20.1", "gpu": "A100-PCIe-40GB", "powerLimitW": 250 },
+  "gpu": {
+    "peakDenseFp16Flops": 312000000000000,
+    "memoryBandwidthBytesPerSecond": 1555000000000,
+    "memoryBytes": 42949672960
+  },
+  "model": {
+    "name": "Llama-3.1-8B-Instruct",
+    "dtype": "float16",
+    "params": 8030000000,
+    "weightBytes": 16060000000,
+    "layers": 32,
+    "hiddenSize": 4096,
+    "kvHeads": 8,
+    "headDim": 128,
+    "kvBytesPerToken": 131072
+  },
+  "engine": {
+    "kvPoolTokens": 140000,
+    "blockSize": 16,
+    "maxNumSeqs": 256,
+    "maxNumBatchedTokens": 8192,
+    "maxModelLen": 131072
+  },
+  "costModel": { "computeEfficiency": 0.5, "bandwidthEfficiency": 0.8, "stepOverheadMs": 4 },
+  "coldStartMs": {
+    "processRestart": { "weightsLoaded": 12000, "engineReady": 45000 },
+    "hostReboot": { "weightsLoaded": 25000, "engineReady": 60000 },
+    "replacementHost": { "weightsLoaded": 25000, "engineReady": 115000 }
+  },
+  "prefixCache": { "warmTtftMs": null, "coldTtftMs": null, "prefixTokens": null }
+}

@@ -9,6 +9,7 @@ import { footnoteText } from './footnote.ts';
 import { Sidebar } from './Sidebar.tsx';
 
 const measured: Calibration = { ...calibration, status: 'measured' };
+const provisional: Calibration = { ...calibration, status: 'provisional' };
 
 let current: TestStore | null = null;
 afterEach(() => {
@@ -95,8 +96,7 @@ describe('Sidebar', () => {
   });
 
   it('says so in the footnote while the calibration is provisional', () => {
-    setup('live', 0, calibration);
-    expect(calibration.status).toBe('provisional');
+    setup('live', 0, provisional);
     const footer = screen.getByRole('contentinfo', { hidden: true });
     expect(footer).toHaveTextContent('Provisional calibration');
     expect(footer).toHaveTextContent(/spec-sheet estimates for Llama 3\.1 8B Instruct/);
@@ -124,12 +124,12 @@ describe('Sidebar', () => {
 
 describe('footnoteText', () => {
   it('has the basis and no accuracy claim in both states', () => {
-    for (const cal of [calibration, measured]) {
+    for (const cal of [provisional, measured]) {
       const { lines } = footnoteText(cal);
       expect(lines.join(' ')).toMatch(/Llama 3\.1 8B Instruct on NVIDIA A100 PCIe 40GB/);
       expect(lines.at(-1)).toMatch(/absolute numbers do not.*no accuracy claim/);
     }
-    expect(footnoteText(calibration).provisional).toBe(true);
+    expect(footnoteText(provisional).provisional).toBe(true);
     expect(footnoteText(measured).provisional).toBe(false);
   });
 });

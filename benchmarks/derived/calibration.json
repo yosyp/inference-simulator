@@ -1,7 +1,18 @@
 {
   "schemaVersion": 1,
-  "status": "provisional",
-  "source": { "runIds": [], "vllm": "0.20.1", "gpu": "A100-PCIe-40GB", "powerLimitW": 250 },
+  "status": "measured",
+  "source": {
+    "runIds": [
+      "R0-20260923T193126Z",
+      "R1-20260923T193249Z",
+      "R2-20260923T195236Z",
+      "R6-20260923T214636Z",
+      "R7-20260923T221344Z-process-restart"
+    ],
+    "vllm": "0.20.1",
+    "gpu": "A100-PCIe-40GB",
+    "powerLimitW": 250
+  },
   "gpu": {
     "peakDenseFp16Flops": 312000000000000,
     "memoryBandwidthBytesPerSecond": 1555000000000,
@@ -19,17 +30,37 @@
     "kvBytesPerToken": 131072
   },
   "engine": {
-    "kvPoolTokens": 140000,
+    "kvPoolTokens": 158864,
     "blockSize": 16,
     "maxNumSeqs": 256,
-    "maxNumBatchedTokens": 8192,
+    "maxNumBatchedTokens": 2048,
     "maxModelLen": 131072
   },
-  "costModel": { "computeEfficiency": 0.5, "bandwidthEfficiency": 0.8, "stepOverheadMs": 4 },
-  "coldStartMs": {
-    "processRestart": { "weightsLoaded": 12000, "engineReady": 45000 },
-    "hostReboot": { "weightsLoaded": 25000, "engineReady": 60000 },
-    "replacementHost": { "weightsLoaded": 25000, "engineReady": 115000 }
+  "costModel": {
+    "computeEfficiency": 0.5455,
+    "bandwidthEfficiency": 0.8482,
+    "stepOverheadMs": 0.71,
+    "decodePerSeqMs": 0.052,
+    "cachedTokenMs": 0.006205,
+    "requestOverheadMs": 18.9
   },
-  "prefixCache": { "warmTtftMs": null, "coldTtftMs": null, "prefixTokens": null }
+  "coldStartMs": {
+    "processRestart": {
+      "weightsLoaded": 17879,
+      "engineReady": 29122
+    },
+    "hostReboot": {
+      "weightsLoaded": 25000,
+      "engineReady": 60000
+    },
+    "replacementHost": {
+      "weightsLoaded": 25000,
+      "engineReady": 115000
+    }
+  },
+  "prefixCache": {
+    "warmTtftMs": 112.7,
+    "coldTtftMs": 905.3,
+    "prefixTokens": 8192
+  }
 }
