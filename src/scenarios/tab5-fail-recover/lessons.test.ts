@@ -186,11 +186,15 @@ describe('tab 5: fail and recover', () => {
       // looks least busy until it is marked down: it draws nearly every request in between.
       const hole = { fromMs: CRASH_MS, toMs: MARK_DOWN_MS };
       const holeShare = scalarIn(r, 'dispatched', hole, crashed) / scalarIn(r, 'dispatched', hole);
-      // The rejoin: Ready with an empty cache and an outstanding count of 0.
+      // The rejoin: Ready with an empty cache and an outstanding count of 0, so it draws every
+      // request until the router's next load reading (signalRefreshMs, 1 s) shows it busy. With the
+      // measured calibration decode is faster and the survivors hold fewer requests (~6 each), so
+      // after that reading the rejoined replica's burst already exceeds them and the burst ends: it
+      // took 6 of 10 requests in 2 s, all 6 in the first second. The window is that first reading.
       const rejoinMs = readyAtOrAfter(r, CRASHED_REPLICA, CRASH_MS)!;
       const dispatchedIn = (fromMs: number, toMs: number) =>
         r.records.filter((x) => x.dispatchMs >= fromMs && x.dispatchMs < toMs);
-      const burst = dispatchedIn(rejoinMs, rejoinMs + 2 * SECOND_MS);
+      const burst = dispatchedIn(rejoinMs, rejoinMs + scenario.sim.tunable.signalRefreshMs);
       const burstShare = burst.filter((x) => x.replica === CRASHED_REPLICA).length / burst.length;
       // Returning turns it serves in its first 30 s: none finds its history there, only the
       // shared system prompt. Elsewhere in the fleet some do.
@@ -203,12 +207,13 @@ describe('tab 5: fail and recover', () => {
       };
       console.log(
         `least-outstanding: crashed replica drew ${(holeShare * 100).toFixed(0)}% before mark-down; ` +
-          `rejoined drew ${(burstShare * 100).toFixed(0)}% of the first 2 s (${burst.length} requests); ` +
+          `rejoined drew ${(burstShare * 100).toFixed(0)}% of the first 1 s (${burst.length} requests); ` +
           `history hits on it ${historyHit(true).toFixed(2)} vs fleet ${historyHit(false).toFixed(2)}`,
       );
+      // Measured: 94% before mark-down; 6 of 6 requests in the first second after the rejoin.
       expect(holeShare).toBeGreaterThanOrEqual(0.8);
-      expect(burst.length).toBeGreaterThanOrEqual(8);
-      expect(burstShare).toBeGreaterThanOrEqual(0.6);
+      expect(burst.length).toBeGreaterThanOrEqual(4);
+      expect(burstShare).toBeGreaterThanOrEqual(0.8);
       expect(historyHit(true)).toBeLessThanOrEqual(0.05);
       expect(historyHit(false)).toBeGreaterThan(historyHit(true));
     },
