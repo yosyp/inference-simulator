@@ -26,6 +26,12 @@ const slowTests = [
 ];
 const fastOnly = process.env.TEST_TIER === 'fast' ? slowTests : [];
 
+// Wall-clock floors (ms per query, ops per second) mean nothing under coverage instrumentation,
+// which slows everything several-fold. `pnpm test:coverage` skips these files; every other run
+// keeps them.
+const timingTests = ['src/**/perf.test.ts', 'src/**/bench.test.ts'];
+const skipped = [...fastOnly, ...(process.env.COVERAGE ? timingTests : [])];
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
@@ -56,7 +62,7 @@ export default defineConfig({
     projects: [
       {
         extends: true,
-        test: { name: 'node', environment: 'node', include: nodeTests, exclude: fastOnly },
+        test: { name: 'node', environment: 'node', include: nodeTests, exclude: skipped },
       },
       {
         extends: true,
@@ -64,7 +70,7 @@ export default defineConfig({
           name: 'dom',
           environment: 'jsdom',
           include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-          exclude: [...nodeTests, ...fastOnly],
+          exclude: [...nodeTests, ...skipped],
           setupFiles: ['src/test-setup.ts'],
         },
       },
