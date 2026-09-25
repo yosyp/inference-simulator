@@ -8,7 +8,7 @@ import { patchAt } from '../../engine/api.ts';
 import { runHeadless } from '../../engine/headless.ts';
 import { OUTCOME, replicaSeries, type ResultChunk } from '../../engine/results.ts';
 import { SECOND_MS, dayOf, timeOfDayMs } from '../../engine/time.ts';
-import { LONG_PROMPT_TOKENS, scenario } from './index.ts';
+import { LONG_PROMPT_OUTPUT_TOKENS, LONG_PROMPT_TOKENS, scenario } from './index.ts';
 
 interface Req {
   analyst: number;
@@ -109,42 +109,46 @@ describe('tab 1: long prompt', () => {
     expect(short.length).toBeGreaterThanOrEqual(30);
     expect(short.filter((r) => r.arriveMs < scenario.entry.atMs).length).toBeGreaterThanOrEqual(10);
     // The long prompt runs alone: no normal turn arrives while it is in flight.
-    const longEndMs = longReq.arriveMs + longReq.ttftMs + 600 * longReq.tpotMs;
+    const longEndMs =
+      longReq.arriveMs + longReq.ttftMs + LONG_PROMPT_OUTPUT_TOKENS * longReq.tpotMs;
     expect(short.some((r) => r.arriveMs >= moment && r.arriveMs < longEndMs)).toBe(false);
   });
 
   it('TTFT scales with prompt length; TPOT grows only slowly (K3)', () => {
-    // Measured: 4,950 ms vs a 23.5 ms median over 43 normal turns (~210×).
+    // Measured: 4,560 ms vs an 82 ms median over 43 normal turns (~56×).
     expect(longReq.ttftMs).toBeGreaterThanOrEqual(20 * shortTtftMs);
-    // Measured: 20.3 ms vs 17.5 ms (~1.16×). Not constant: the copy says TPOT rises.
+    // Measured: 16.2 ms vs 13.5 ms (~1.20×). Not constant: the copy says TPOT rises.
     expect(longReq.tpotMs).toBeLessThanOrEqual(1.35 * shortTpotMs);
     expect(longReq.tpotMs).toBeGreaterThanOrEqual(1.08 * shortTpotMs);
-    // The copy's numbers: "mostly 20–50 ms", "about 5 s", "about 17 ms to 20 ms".
-    expect(shortTtftMs).toBeGreaterThan(10);
-    expect(shortTtftMs).toBeLessThan(40);
+    // The copy's numbers: "mostly 40–150 ms", "4.6 s instead of about 80 ms", "about 13.5 ms to
+    // 16 ms". X4: normal turns now include the 18.9 ms per-request overhead and 6.2 µs per cached
+    // token of history, so their median rose from ~23 ms to ~80 ms.
+    expect(shortTtftMs).toBeGreaterThan(60);
+    expect(shortTtftMs).toBeLessThan(110);
     expect(longReq.ttftMs).toBeGreaterThan(4_000);
-    expect(longReq.ttftMs).toBeLessThan(6_000);
-    expect(shortTpotMs).toBeGreaterThan(16);
-    expect(shortTpotMs).toBeLessThan(18.5);
-    expect(longReq.tpotMs).toBeGreaterThan(19);
-    expect(longReq.tpotMs).toBeLessThan(21.5);
+    expect(longReq.ttftMs).toBeLessThan(5_200);
+    expect(shortTpotMs).toBeGreaterThan(12.5);
+    expect(shortTpotMs).toBeLessThan(14.5);
+    expect(longReq.tpotMs).toBeGreaterThan(15);
+    expect(longReq.tpotMs).toBeLessThan(17.5);
   });
 
   it('shows the KV bump, the nvidia-smi vs. compute gap, and an idle day on the charts', () => {
     const bucketMs = scenario.sim.bucketMs;
     const from = Math.floor(moment / bucketMs) * bucketMs;
     const around = buckets(day.chunks, from, from + 60 * SECOND_MS);
-    // Chart 2: "about 23% of the pool while the long prompt runs".
+    // Chart 2: "about 21% of the pool while the long prompt runs" (32,800 of 158,864 tokens; X4's
+    // measured pool is larger than the provisional 140k, so the share fell from ~23%).
     const kvMax = Math.max(...around.map((b) => b.kv));
-    expect(kvMax).toBeGreaterThan(0.2);
-    expect(kvMax).toBeLessThan(0.27);
+    expect(kvMax).toBeGreaterThan(0.18);
+    expect(kvMax).toBeLessThan(0.24);
     // Chart 3: a decode-only bucket is 100% busy by nvidia-smi with compute under 1%...
     const decode = around.filter((b) => b.smi > 0.99);
     expect(decode.length).toBeGreaterThanOrEqual(1);
     for (const b of decode) expect(b.compute).toBeLessThan(0.01);
-    // ...and only prefill raises compute (half the peak at η_c 0.5, diluted by the bucket).
+    // ...and only prefill raises compute (η_c of the peak, diluted by the bucket).
     expect(Math.max(...around.map((b) => b.compute))).toBeGreaterThan(0.2);
-    // High side: "busy about 1% of the shift".
+    // High side: "busy under 1% of the shift" (measured 0.67%).
     const rollup = day.rollup!;
     expect(rollup).toHaveLength(1);
     expect(rollup[0]!.meanNvidiaSmiUtil).toBeGreaterThan(0.004);

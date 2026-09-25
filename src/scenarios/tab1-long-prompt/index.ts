@@ -3,18 +3,23 @@
 // traffic is mostly the 16 GB of weights. The lesson moment is one 32k-token prompt from the tracked
 // analyst on Tuesday at 11:00, beside their normal short turns.
 //
-// Measured on the provisional calibration (η_c 0.5, η_b 0.8, t_o 4 ms, KV pool 140k), lessons.test.ts:
-// the long prompt's TTFT is 4.95 s against a normal-turn median of 23.5 ms (~210×); its TPOT is
-// 20.3 ms against 17.5 ms (~1.16×). The copy quotes these; the test guards them for X4's retune.
+// Measured on the measured calibration (X4: η_c 0.545, η_b 0.848, t_o 0.71 ms, KV pool 158,864,
+// 2,048-token chunks, 18.9 ms per request, 6.2 µs per cached token), lessons.test.ts: the long
+// prompt's TTFT is 4.56 s against a normal-turn median of 82 ms (~56×); its TPOT is 16.2 ms against
+// 13.5 ms (~1.2×). Normal turns now pay the per-request overhead and ~6 µs for every cached token of
+// history, so their TTFT is 40–180 ms and grows as a conversation lengthens (was ~20–50 ms). The
+// copy quotes these numbers; the test guards them.
 
 import type { Patch, PatchTemplate, SimConfig } from '../../engine/api.ts';
 import { HOUR_MS, simMs } from '../../engine/time.ts';
 import type { ReplicaSnapshot } from '../../playback/types.ts';
 import type { Scenario } from '../schema.ts';
 
-/** The long prompt: a pasted document of about 24,000 words, answered with a ~450-word summary. */
+/** The long prompt: a pasted document of about 24,000 words, answered with a ~600-word summary.
+ * 800 output tokens (was 600) keep decode running through a whole 10 s bucket at the faster measured
+ * TPOT, so chart 3 shows a decode-only bucket at 100% nvidia-smi. */
 export const LONG_PROMPT_TOKENS = 32_000;
-export const LONG_PROMPT_OUTPUT_TOKENS = 600;
+export const LONG_PROMPT_OUTPUT_TOKENS = 800;
 
 /** Tuesday 11:00:05, 7 s after the analyst's fifth turn of a conversation finishes (seed 20). */
 export const LESSON_MOMENT_MS = simMs(1, 11, 0, 5);
@@ -70,11 +75,12 @@ export const sim: SimConfig = {
     systemPromptTokens: 800,
     turnsPerSessionMean: 4,
     // A typed question: ~150 tokens (~110 words). Earlier turns stay cached, so each normal turn
-    // prefills only its new message: TTFT mostly 20–50 ms.
+    // prefills only its new message: TTFT mostly 40–150 ms (per-request overhead plus reading the
+    // cached history).
     messageTokensMedian: 150,
     outputTokensMedian: 300,
     thinkTimeMedianMs: 90_000,
-    // Well above the long prompt's ~5 s TTFT, so it never times out.
+    // Well above the long prompt's ~4.6 s TTFT, so it never times out.
     timeoutToFirstTokenMs: 60_000,
     retryPolicy: 'exponential',
     retryBaseMs: 1_000,
@@ -118,7 +124,7 @@ export const scenario: Scenario = {
   lesson: {
     summary: 'One analyst on one GPU sends a 32,000-token prompt among their normal short turns.',
     takeaway:
-      'Time to first token grows with prompt length: 5 s instead of 20 ms here. Time per output token barely moves, because each decode step mostly reads the model’s weights, not the prompt.',
+      'Time to first token grows with prompt length: 4.6 s instead of about 80 ms here. Time per output token barely moves, because each decode step mostly reads the model’s weights, not the prompt.',
   },
   // Two hours around the long prompt: enough normal turns beside it to compare.
   chartWindowMs: 2 * HOUR_MS,
@@ -140,21 +146,21 @@ export const scenario: Scenario = {
   copy: {
     whatToWatch: [
       'One analyst on one GPU. On Tuesday at 11:00 they paste a 32,000-token document. Their normal turns prefill only a few hundred new tokens each; earlier turns stay in the cache.',
-      'Time to first token (TTFT) is prefill: the GPU processes the whole prompt before the first output token. Normal turns wait mostly 20–50 ms. The long prompt waits about 5 s; switch to 1× just before 11:00 to watch its dot sit in prefill that long. On the latency chart, each dot is one request’s TTFT.',
-      'Time per output token (TPOT) rises only from about 17 ms to 20 ms. Each decode step reads all 16 GB of weights, plus the KV cache for every token of context. At 32,000 tokens the KV cache is about 4 GB, so each step reads about a quarter more.',
-      'The memory chart shows that KV cache: about 23% of the pool while the long prompt runs. On the utilization chart, decode keeps the GPU 100% busy by nvidia-smi while compute stays under 1%: decode waits on memory, not arithmetic. Across the day the GPU is busy about 1% of the shift.',
+      'Time to first token (TTFT) is prefill: the GPU processes the whole prompt before the first output token. Normal turns wait mostly 40–150 ms, more as the conversation’s cached history grows. The long prompt waits about 4.6 s; switch to 1× just before 11:00 to watch its dot sit in prefill that long. On the latency chart, each dot is one request’s TTFT.',
+      'Time per output token (TPOT) rises only from about 13.5 ms to 16 ms. Each decode step reads all 16 GB of weights, plus the KV cache for every token of context. At 32,000 tokens the KV cache is about 4 GB, so each step reads about a quarter more.',
+      'The memory chart shows that KV cache: about 21% of the pool while the long prompt runs. On the utilization chart, decode keeps the GPU 100% busy by nvidia-smi while compute stays under 1%: decode waits on memory, not arithmetic. Across the day the GPU is busy under 1% of the shift.',
     ],
     tryThis: [
-      'Raise Message length to 4,000 tokens, then play to the next conversation at 12:22. Its turns take several hundred ms to first token instead of 20 ms.',
-      'Raise Answer length to 1,500 tokens. The next conversation takes longer end to end (the rings on the latency chart), but its TTFT stays near 20 ms.',
-      'Switch to High side and play to Wednesday 12:00. Tuesday’s rollup arrives: requests served, mean latency, and a GPU busy about 1% of the shift. The long prompt does not show.',
+      'Raise Message length to 4,000 tokens, then play to the next conversation at 12:22. Its turns take 300–450 ms to first token instead of about 40 ms.',
+      'Raise Answer length to 1,500 tokens. The next conversation takes longer end to end (the rings on the latency chart), but its TTFT stays near 40–55 ms.',
+      'Switch to High side and play to Wednesday 12:00. Tuesday’s rollup arrives: requests served, mean latency, and a GPU busy under 1% of the shift. The long prompt does not show.',
     ],
   },
   // The snapshot's levels (running, KV) are the current 10 s bucket; its rates and utilization are
   // over the trailing minute, so the text says "last minute" wherever it quotes one.
   statusTemplates: [
     {
-      // A long prompt: prefill of 8k+ tokens is one full chunk; normal turns prefill a few hundred.
+      // A long prompt: 8k+ prefilled tokens in a minute; normal turns prefill a few hundred.
       id: 'longPrefill',
       priority: 20,
       render: (s) => {

@@ -9,9 +9,10 @@
 // crashed replica draws nearly all traffic until mark-down (K34), and the rejoined one takes a
 // burst of cold requests.
 //
-// Measured on the provisional calibration (lessons.test.ts): in the three minutes after the crash
-// the fleet's prefill work is 2.4× the 15 minutes before and TTFT mean 2.5× (p99 1.7×), against
-// 1.3× for both under consistent hashing.
+// Measured with the measured calibration (lessons.test.ts): in the three minutes after the crash
+// the fleet's prefill work is 2.9× the 15 minutes before and TTFT mean 2.3× (p99 2.0×), against
+// 1.4× prefill and TTFT mean 1.35× (p99 1.5×) under consistent hashing. The first minute is the
+// worst: prefill 3.4× and TTFT mean 2.9× under mod-N.
 
 import type { SimConfig } from '../../engine/api.ts';
 import { REPLICA_STATE } from '../../engine/results.ts';
@@ -48,12 +49,14 @@ export const sim: SimConfig = {
     ],
     dayMultipliers: [0.95, 1, 1, 1, 0.85],
   },
-  // 12 conversations of ~5 turns per analyst per day: ~7 requests/s across the fleet on the
-  // plateau, ~7 outstanding per replica. The 140k-token KV pool then keeps most returning
-  // histories (returning-turn hit rate ~0.8), which is what a crash throws away. Busier, LRU churn
-  // evicts histories before analysts return (~0.6 at 16 per analyst, ~0.3 near the knee), and
-  // affinity, and losing it, matters much less.
-  sessionsPerAnalystPerDay: 12,
+  // 12.5 conversations of ~5 turns per analyst per day: ~7 requests/s across the fleet on the
+  // plateau, ~6 outstanding per replica. The 159k-token KV pool then keeps most returning
+  // histories (returning-turn hit rate ~0.85), which is what a crash throws away. Busier, LRU churn
+  // evicts histories before analysts return (~0.7 at 16 per analyst, ~0.4 near the knee at ~24),
+  // and affinity, and losing it, matters much less. Less busy (12), least-outstanding more often
+  // finds a survivor with nothing outstanding too, and the crashed replica draws only ~3/4 of
+  // requests before mark-down; 12.5 keeps that black hole at ~94%.
+  sessionsPerAnalystPerDay: 12.5,
   messageTokensSigma: 0.8,
   outputTokensSigma: 0.7,
   outputTokensMax: 4096,
@@ -176,14 +179,14 @@ export const scenario: Scenario = {
   ],
   copy: {
     whatToWatch: [
-      'Eight replicas serve 3,200 analysts. Session affinity hashes each conversation’s ID, mod 8, to pick its replica, so about 80% of a follow-up’s prompt tokens are already in that replica’s KV cache.',
-      `At 09:15 ${CRASHED_LABEL} crashes. For 10 s, until it is marked down, the router keeps sending it requests, which fail; clients retry with backoff. Then mod-N hashes over 7 replicas, and about 7 in 8 conversations move. Each moved follow-up prefills its whole history again: for about a minute the fleet does more than twice its usual prefill work, and TTFT mean nearly triples.`,
+      'Eight replicas serve 3,200 analysts. Session affinity hashes each conversation’s ID, mod 8, to pick its replica, so about 85% of a follow-up’s prompt tokens are already in that replica’s KV cache.',
+      `At 09:15 ${CRASHED_LABEL} crashes. For 10 s, until it is marked down, the router keeps sending it requests, which fail; clients retry with backoff. Then mod-N hashes over 7 replicas, and about 7 in 8 conversations move. Each moved follow-up prefills its whole history again: for about a minute the fleet does more than three times its usual prefill work, and TTFT mean nearly triples.`,
       'The replacement loads weights and starts its engine, and rejoins at 09:17 with an empty cache. Mod-N moves most conversations again, and TTFT rises a second time; by 09:20 it has mostly settled. The tracked analyst’s replica never crashed, yet their conversation moved twice.',
-      'On the latency chart, the black line is the worst replica’s TTFT p99; the fleet’s p99 sits above most replicas’ own, because the slowest replicas set the tail. Losing 1 of 8 replicas costs far more than 1/8 of capacity.',
+      'On the latency chart, the black line is the worst replica’s TTFT p99, well above the fleet’s: the slowest replicas set the tail. Losing 1 of 8 replicas costs far more than 1/8 of capacity.',
     ],
     tryThis: [
       `In Parameters, set Hash scheme to Consistent. The switch itself remaps conversations, so play a few minutes, then press Crash ${CRASHED_LABEL}. Only its conversations move, about 1 in 8, and TTFT rises much less.`,
-      `Set Routing policy to Least outstanding and press Crash ${CRASHED_LABEL}. Until mark-down it fails requests instantly, so its count stays at zero and it draws nearly every request. When it rejoins, it takes every new request for a second or two, and none finds its history there.`,
+      `Set Routing policy to Least outstanding and press Crash ${CRASHED_LABEL}. Until mark-down it fails requests instantly, so its count stays at zero and it draws nearly every request. When it rejoins, it takes every new request for about a second, until the router’s next load reading, and none finds its history there.`,
       `Switch to High side and play to Thursday 12:00. Wednesday’s rollup shows ${CRASHED_LABEL} serving about as many requests as the others: the outage doesn’t show in a daily count.`,
     ],
   },

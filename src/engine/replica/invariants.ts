@@ -1,7 +1,7 @@
 // assertInvariants for the replica module (00-build §7.1). O(requests + blocks) per replica; tests
 // call it after every event.
 
-import type { Ctx, DayState } from '../core/index.ts';
+import { NO_EVENT, type Ctx, type DayState } from '../core/index.ts';
 import { assertInvariants as assertStepDesc } from '../cost/index.ts';
 import { assertKvInvariants, blocksForTokens, kvUsedFrac } from '../kv/index.ts';
 import { REPLICA_STATE, REQUEST_STATE } from '../results.ts';
@@ -12,7 +12,13 @@ function check(ok: boolean, message: string): void {
   if (!ok) throw new Error(`Replica invariant: ${message}`);
 }
 
-function assertRequests(state: DayState, rep: ReplicaEngine, r: number, seen: Uint8Array): void {
+function assertRequests(
+  state: DayState,
+  ctx: Ctx,
+  rep: ReplicaEngine,
+  r: number,
+  seen: Uint8Array,
+): void {
   const q = state.replica.req;
   const t = state.shared.requests;
   const bs = rep.pool.blockSize;
@@ -35,6 +41,16 @@ function assertRequests(state: DayState, rep: ReplicaEngine, r: number, seen: Ui
       `waiting slot ${s} state ${st}`,
     );
     check(q.held[s] === 0, `waiting slot ${s} holds ${q.held[s]} blocks`);
+  }
+  // An eligibility past the day's end has no event; the day ends first.
+  const lateOk = ctx.dayEndMs - ctx.nowMs <= ctx.input.calibration.costModel.requestOverheadMs;
+  for (const s of rep.arriving) {
+    own(s, 'arriving');
+    check(q.phase[s] === PHASE.arriving, `arriving slot ${s} has phase ${q.phase[s]}`);
+    check(t.state[s] === REQUEST_STATE.waiting, `arriving slot ${s} state ${t.state[s]}`);
+    check(q.held[s] === 0, `arriving slot ${s} holds ${q.held[s]} blocks`);
+    const h = q.eligibleEv[s]!;
+    check(h === NO_EVENT ? lateOk : ctx.isPending(h), `arriving slot ${s} has no eligibility`);
   }
   let prefill = 0;
   let decode = 0;
@@ -92,6 +108,7 @@ function assertSchedule(state: DayState, ctx: Ctx, rep: ReplicaEngine, r: number
   const work = rep.running.length > 0 || waitingCount(rep) > 0;
   if (rep.state !== REPLICA_STATE.ready) {
     check(!work && rep.mode === MODE.idle, `replica ${r} is not Ready but holds work`);
+    check(rep.arriving.length === 0, `replica ${r} is not Ready but has requests arriving`);
     check(rep.pool.referencedCount === 0, `replica ${r} is not Ready but holds blocks`);
   }
   if (rep.mode === MODE.idle) {
@@ -123,7 +140,7 @@ export function assertReplicaInvariants(state: DayState, ctx: Ctx): void {
   for (let r = 0; r < sl.replicas.length; r++) {
     const rep = sl.replicas[r]!;
     check(rep.pool.blockSize === sl.limits.blockSize, `replica ${r} block size`);
-    assertRequests(state, rep, r, seen);
+    assertRequests(state, ctx, rep, r, seen);
     assertSchedule(state, ctx, rep, r);
   }
   for (let s = 0; s < q.capacity; s++) {

@@ -2,7 +2,7 @@
 // that isn't Ready, and requests that could never run.
 
 import { describe, expect, it } from 'vitest';
-import raw from '../../../benchmarks/derived/calibration.json';
+import raw from '../../../benchmarks/derived/calibration.provisional.json';
 import { parseCalibration } from '../calibration.ts';
 import { batch1TtftMs } from '../cost/index.ts';
 import { OUTCOME, REPLICA_STATE, REQUEST_STATE } from '../results.ts';

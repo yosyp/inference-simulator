@@ -279,7 +279,8 @@ describe('event queue throughput', () => {
       return { size, opsPerSec: measure(size, 400_000) };
     });
     if (process.env.CORE_BENCH) console.info('queue ops/s (push + pop):', results);
-    // A loose floor so slow CI machines don't flake; see README for measured figures.
-    for (const r of results) expect(r.opsPerSec).toBeGreaterThan(1e6);
+    // A loose floor so slow CI machines don't flake; see README for measured figures. Skipped under
+    // coverage (`pnpm test:coverage`), whose instrumentation slows everything several-fold.
+    if (!process.env.COVERAGE) for (const r of results) expect(r.opsPerSec).toBeGreaterThan(1e6);
   });
 });

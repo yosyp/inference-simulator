@@ -556,7 +556,8 @@ describe('dispatch throughput', () => {
     const r = measure(HOUR_MS);
     if (process.env.CORE_BENCH) console.info('runner dispatch:', r);
     expect(r.events).toBeGreaterThan(4e5);
-    // Loose floor for slow CI; README records measured figures.
-    expect(r.perSec).toBeGreaterThan(5e5);
+    // Loose floor for slow CI; README records measured figures. Skipped under coverage, whose
+    // instrumentation slows everything several-fold.
+    if (!process.env.COVERAGE) expect(r.perSec).toBeGreaterThan(5e5);
   });
 });

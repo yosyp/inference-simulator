@@ -8,6 +8,12 @@
 // retries run out (K8) and that sheds load. And with the fix, clients still retry rejected
 // requests, so offered load is ~2× first attempts during the outage too; what the fix holds down is
 // admitted load, the work that reaches the GPUs. The thresholds below follow that.
+//
+// X4 (measured calibration): the storm is milder than on the provisional one at every load that
+// keeps the healthy peak calm. Sweeping 15.6–17.4 conversations per analyst: amplification over 2
+// minutes 1.5–2.1× (was 2.6×), goodput 52–67% (was 35%), 110–260 conversations abandoned (was
+// 350), and the fix abandons 0.47–0.72 as many. The amplification, goodput, abandonment, and
+// fix-abandonment thresholds moved to that band; the rest are unchanged.
 
 import { describe, expect, it } from 'vitest';
 import type { Patch } from '../../engine/api.ts';
@@ -94,21 +100,22 @@ describe('tab 6: retry storm', () => {
       expect(ready).not.toBeNull();
       expect(ready! - C).toBeLessThanOrEqual(130_000);
 
-      // Amplification over the 2 minutes after the crash: measured 2.59 (worst minute 3.9).
+      // Amplification over the 2 minutes after the crash: measured 2.00 (worst minute 2.9).
       const w2 = counts(storm, 0, 2);
-      expect(w2.offered / w2.organic).toBeGreaterThanOrEqual(2);
+      expect(w2.offered / w2.organic).toBeGreaterThanOrEqual(1.7);
       // Everything offered is admitted; there is no admission control.
       expect(w2.rejected).toBe(0);
-      // Goodput: measured 35% of the no-crash run, well under the ~75% three replicas serve.
-      expect(goodput(storm, 0, 2)).toBeLessThan(0.5);
+      // Goodput: measured 52% of the no-crash run, well under the ~75% three replicas serve with
+      // the fix (next test).
+      expect(goodput(storm, 0, 2)).toBeLessThan(0.62);
       // TTFT p99 is pinned at the 10 s timeout: measured 10.0 s.
       expect(ttftP99Ms(storm, 0, 2)).toBeGreaterThanOrEqual(9_000);
 
-      // Abandonment (K8): measured 348 conversations and 1,870 timeouts in 15 minutes.
+      // Abandonment (K8): measured 257 conversations and 1,559 timeouts in 15 minutes.
       const w15 = counts(storm, 0, 15);
-      expect(w15.abandonedSessions).toBeGreaterThanOrEqual(250);
+      expect(w15.abandonedSessions).toBeGreaterThanOrEqual(180);
       expect(w15.timedOut).toBeGreaterThanOrEqual(1_200);
-      // Those analysts send no more turns: served stays ~10% low after recovery (measured 0.89).
+      // Those analysts send no more turns: served stays ~8% low after recovery (measured 0.92).
       expect(goodput(storm, 5, 15)).toBeLessThan(0.95);
     },
     TIMEOUT,
@@ -125,26 +132,29 @@ describe('tab 6: retry storm', () => {
       // The cap never bites before the crash: the fix is invisible on a healthy peak.
       expect(counts(fix, -2, 0).rejected).toBe(0);
 
-      // Admitted ÷ first attempts over the 3 minutes after the crash: measured 0.99 (storm 2.30).
+      // Admitted ÷ first attempts over the 3 minutes after the crash: measured 0.98 (storm 1.93).
       const w3 = counts(fix, 0, 3);
+      const s3 = counts(storm, 0, 3);
       expect(w3.rejected).toBeGreaterThan(0);
       expect(w3.dispatched / w3.organic).toBeLessThanOrEqual(1.1);
-      // Offered still exceeds first attempts (rejected requests retry): measured 1.75, storm 2.30.
-      const s3 = counts(storm, 0, 3);
-      expect(w3.offered / w3.organic).toBeLessThan(s3.offered / s3.organic);
+      expect(w3.dispatched / w3.organic).toBeLessThanOrEqual(s3.dispatched / s3.organic - 0.5);
+      // Offered still exceeds first attempts (rejected requests retry): measured 1.83. With the
+      // milder storm that is close to the storm's 1.93, so this no longer compares the two; the
+      // difference the fix makes is in admitted load, above.
+      expect(w3.offered / w3.organic).toBeGreaterThan(1.3);
 
-      // Goodput holds near the survivors' capacity: measured 76% (storm 35%), and TTFT stays
-      // under the timeout: measured p99 8.6 s, with no timeouts in 15 minutes (storm 1,870).
+      // Goodput holds near the survivors' capacity: measured 76% (storm 52%), and TTFT stays
+      // under the timeout: measured p99 8.3 s, with 8 timeouts in 15 minutes (storm 1,559).
       expect(goodput(fix, 0, 2)).toBeGreaterThanOrEqual(0.65);
       expect(ttftP99Ms(fix, 0, 2)).toBeLessThan(10_000);
       const f15 = counts(fix, 0, 15);
       expect(f15.timedOut).toBeLessThanOrEqual(0.05 * counts(storm, 0, 15).timedOut);
 
-      // Back to ≥ 90% within 15 minutes: measured 97% over [+5, +15) min, 93% over [0, +5).
+      // Back to ≥ 90% within 15 minutes: measured 97% over [+5, +15) min, 90% over [0, +5).
       expect(goodput(fix, 5, 15)).toBeGreaterThanOrEqual(0.9);
-      // Fewer abandoned conversations: measured 99 against 348.
+      // Fewer abandoned conversations: measured 123 against 257.
       expect(f15.abandonedSessions).toBeLessThanOrEqual(
-        0.5 * counts(storm, 0, 15).abandonedSessions,
+        0.65 * counts(storm, 0, 15).abandonedSessions,
       );
     },
     TIMEOUT,

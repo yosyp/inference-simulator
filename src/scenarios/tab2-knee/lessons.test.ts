@@ -1,8 +1,9 @@
 // Tab 2 lesson assertions (00-build §7.3). Runs Wednesday headless to the end of the spike hour.
-// Measured on the provisional calibration (seed 1): 50%-load point 08:40 (mean 209 ms, p99 984 ms);
-// spike hour 10:00–11:00 (mean 612 ms, p99 7,629 ms): p99 rose 16.5× as many ms as the mean, ended
-// 7.8× its 50%-load value and 12.5× the hour's mean. Without the spike, 09:00–10:00 gives 5.2×,
-// 2.4×, and 6.0×. First 1-minute p99 burst: 10:20, 30 s of wall time after entry at 50×.
+// Measured on the measured calibration (X4; seed 1, 1.8× spike): 50%-load point 09:10 (mean 186 ms,
+// p99 1,060 ms); spike hour 10:00–11:00 (2.47 requests/s, mean 768 ms, p99 10,467 ms): p99 rose
+// 16.2× as many ms as the mean, ended 9.9× its 50%-load value and 13.6× the hour's mean. Without the
+// spike, 10:00–11:00 gives 6.6×, 4.7×, and 5.5×. First 1-minute p99 burst: 10:07, 15.6 s of wall
+// time after entry at 50×. Spikes of 1.75× and 1.85× also pass; 1.7× fails (4.2×) and 1.9× collapses.
 
 import { beforeAll, describe, expect, it } from 'vitest';
 import { HOUR_MS, MINUTE_MS, SECOND_MS, dayOf, simMs } from '../../engine/time.ts';

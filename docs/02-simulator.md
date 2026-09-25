@@ -94,7 +94,7 @@ Step duration grows as context grows, so the time for k decode steps is a sum ov
 
 Expected scale (measured in S1, K28; earlier estimate K7). S1 (`docs/spikes/s1-scale.md`) measured a Server B knee week at about 1.2–1.5M requests, ~6M model events, ~50M engine steps, and ~250M KV block evictions. Under round-robin the knee is compute-bound at about 1.3 requests/s per replica, because every turn re-prefills its history. The costliest engine work is KV block bookkeeping (every allocation in a warm pool evicts), not steps; event-jumping saves about 2×.
 
-## 6. Step cost model (roofline, three calibrated numbers)
+## 6. Step cost model (roofline, three calibrated numbers plus three measured terms, K36)
 
 ```
 compute_time = FLOPs / (η_c × 312 TFLOPS)
@@ -232,6 +232,7 @@ Storage (K7): per-request data is columnar (typed arrays), never one object per 
 | K29 | G1: histogram layout (§11) | Dense 32-bit at current bins (p99 error up to 14%); dense 16-bit with 2× bins; sparse (CSR) with 2× bins | Sparse CSR histograms with 2× bins (ttft 192, tpot 128, e2e 192; bin ratio ≈ 1.075): ~7 MB per Server B week, p99 error up to ~7% |
 | K32 | Scheduler details where vLLM is ambiguous (decided in E5) | — | Each step: decodes first, then running prefills in admission order, then admissions (FIFO, head-of-line blocking, gated on the whole uncached prompt fitting; the first chunk is allocated). A failed allocation preempts the most recently admitted running request; a step that preempted admits nothing. A request resumed after preemption prefills prompt + output so far. Prefix query and hit counters include re-admissions. Requests that can never run (prompt + output > maxModelLen, or more KV than the pool) fail at dispatch with OUTCOME.failed. When work reaches an idle replica, its first step is composed at priority `late`, so same-instant dispatches share it. Readers of lazily integrated meters send `meterSync` first. |
 | K34 | Failure-model details (decided in E8) | — | Timeline from a crash at t: crashed at t; down and loadingWeights at t + detectionDelayMs (a standby host starts loading at once, so Down lasts no time); initializingEngine at load start + weightsLoaded; ready at load start + engineReady (replacement-host cold start). A crash while already crashed is ignored; a crash during recovery restarts it. Phases past the day's end hold until the day ends. Note for tabs 5 and 6: under least-outstanding (and likely KV-utilization) routing, a crashed-but-undetected replica fails requests instantly, keeps an outstanding count of 0, and draws nearly all traffic until it is marked down (a fail-fast black hole). |
+| K36 | Cost-model terms from the benchmarks (X4a) | Three calibrated numbers only; add measured terms | Three optional terms join η_c, η_b and t_o: decodePerSeqMs (0.052 ms per decode sequence per step), cachedTokenMs (0.0062 ms per prefix-cache hit token in the admitting step), and requestOverheadMs (18.9 ms between dispatch and eligibility to schedule). Fitted from R1, R2 and R6; residuals fell from 14–70% RMS to 3–7%. |
 
 ## 14. Open items
 

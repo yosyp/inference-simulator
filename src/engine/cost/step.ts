@@ -4,6 +4,7 @@
 //   compute_ms = FLOPs / (η_c × peakDenseFp16Flops)
 //   memory_ms  = bytes / (η_b × memoryBandwidthBytesPerSecond)
 //   step_ms    = t_o + max(compute_ms, memory_ms)
+//              + decodePerSeqMs × decode sequences + cachedTokenMs × cached tokens admitted
 //
 //   FLOPs = 2 × params × (prefill tokens + decode sequences)
 //         + 4 × layers × hiddenSize × attention pairs
@@ -21,6 +22,11 @@
 // A decode step is the case n = 1. With c = p + 1, the tokens the decode token attends to, it
 // has c attention pairs, reads c tokens, and writes 1. A request with a P-token prompt that has
 // emitted g ≥ 1 output tokens (the last prefill chunk samples the first) decodes with c = P + g.
+//
+// The two linear terms (X4a) are costs the roofline has no place for, fitted from B2: a per-sequence
+// cost of each decode step (sampling, input prep; R2 grows ~97 µs per sequence where the roofline
+// stays flat), and a per-token cost of a prefix-cache hit, charged once in the step that admits
+// the request (block hashing and lookup; R6). Both default to 0.
 
 import type { Calibration } from '../calibration.ts';
 
@@ -47,11 +53,16 @@ export interface StepDesc {
   prefillPriorTokens: number;
   /** Σ over prefill chunks of causal attention pairs, n·p + n(n + 1)/2 each. */
   prefillAttentionPairs: number;
+  /** Prefix-cache hit tokens of the requests admitted this step (part of prefillPriorTokens). */
+  prefillCachedTokens: number;
 }
 
 /** Cost of one step. Times in ms; FLOPs and bytes are totals for the step. */
 export interface StepCost {
-  /** t_o + max(computeMs, memoryMs). This is also the step's nvidia-smi-style busy time. */
+  /**
+   * t_o + max(computeMs, memoryMs) + the per-sequence and cached-token terms. This is also the
+   * step's nvidia-smi-style busy time.
+   */
   stepMs: number;
   computeMs: number;
   memoryMs: number;
@@ -66,6 +77,7 @@ export function emptyStepDesc(): StepDesc {
     prefillTokens: 0,
     prefillPriorTokens: 0,
     prefillAttentionPairs: 0,
+    prefillCachedTokens: 0,
   };
 }
 
@@ -80,6 +92,7 @@ export function clearStepDesc(desc: StepDesc): void {
   desc.prefillTokens = 0;
   desc.prefillPriorTokens = 0;
   desc.prefillAttentionPairs = 0;
+  desc.prefillCachedTokens = 0;
 }
 
 /** Causal attention pairs for n new tokens after p prior tokens: Σ_{i=1..n} (p + i). Exact. */
@@ -92,6 +105,15 @@ export function addPrefillChunk(desc: StepDesc, priorTokens: number, newTokens: 
   desc.prefillTokens += newTokens;
   desc.prefillPriorTokens += priorTokens;
   desc.prefillAttentionPairs += attentionPairs(priorTokens, newTokens);
+}
+
+/**
+ * Adds a prefill chunk admitted with `cachedTokens` prefix-cache hits: the chunk starts after
+ * them, and the step pays cachedTokenMs for each.
+ */
+export function addAdmittedChunk(desc: StepDesc, cachedTokens: number, newTokens: number): void {
+  addPrefillChunk(desc, cachedTokens, newTokens);
+  desc.prefillCachedTokens += cachedTokens;
 }
 
 /** Adds one decoding sequence whose new token attends to `contextTokens` tokens, itself included. */
@@ -130,6 +152,16 @@ export function stepFlops(desc: StepDesc, cal: Calibration): number {
   );
 }
 
+/** The step time outside the roofline: t_o plus the per-sequence and cached-token terms. */
+export function stepExtraMs(desc: StepDesc, cal: Calibration): number {
+  const c = cal.costModel;
+  return (
+    c.stepOverheadMs +
+    c.decodePerSeqMs * desc.decodeSeqs +
+    c.cachedTokenMs * desc.prefillCachedTokens
+  );
+}
+
 /** HBM bytes of a step: weights once, plus the KV read and written. */
 export function stepBytes(desc: StepDesc, cal: Calibration): number {
   const readTokens = desc.decodeContextTokens + desc.prefillPriorTokens + desc.prefillTokens;
@@ -163,7 +195,7 @@ export function stepTime(
   out.bytes = bytes;
   out.computeMs = computeMs;
   out.memoryMs = memoryMs;
-  out.stepMs = cal.costModel.stepOverheadMs + (computeMs > memoryMs ? computeMs : memoryMs);
+  out.stepMs = stepExtraMs(desc, cal) + (computeMs > memoryMs ? computeMs : memoryMs);
   return out;
 }
 
@@ -172,7 +204,7 @@ export function stepMs(desc: StepDesc, cal: Calibration): number {
   if (desc.prefillTokens + desc.decodeSeqs === 0) return 0;
   const computeMs = stepFlops(desc, cal) / flopsPerMs(cal);
   const memoryMs = stepBytes(desc, cal) / bytesPerMs(cal);
-  return cal.costModel.stepOverheadMs + (computeMs > memoryMs ? computeMs : memoryMs);
+  return stepExtraMs(desc, cal) + (computeMs > memoryMs ? computeMs : memoryMs);
 }
 
 function check(ok: boolean, message: string): void {
@@ -201,6 +233,14 @@ export function assertInvariants(desc: StepDesc): void {
   check(
     isCount(desc.prefillAttentionPairs),
     `prefillAttentionPairs ${desc.prefillAttentionPairs} is not a count`,
+  );
+  check(
+    isCount(desc.prefillCachedTokens),
+    `prefillCachedTokens ${desc.prefillCachedTokens} is not a count`,
+  );
+  check(
+    desc.prefillCachedTokens <= desc.prefillPriorTokens,
+    'prefill cached tokens above prefill prior tokens',
   );
   check(
     desc.decodeContextTokens >= desc.decodeSeqs,

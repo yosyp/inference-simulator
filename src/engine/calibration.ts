@@ -39,11 +39,20 @@ export interface Calibration {
     maxNumBatchedTokens: number;
     maxModelLen: number;
   };
-  /** Roofline calibration (02 §6): η_c, η_b, t_o. */
+  /**
+   * Roofline calibration (02 §6): η_c, η_b, t_o, plus three terms outside the roofline (X4a).
+   * The three are optional in the JSON and default to 0, so older files stay valid.
+   */
   costModel: {
     computeEfficiency: number;
     bandwidthEfficiency: number;
     stepOverheadMs: number;
+    /** Added to a step's time per decode sequence in it (sampling, input prep; R2's slope). */
+    decodePerSeqMs: number;
+    /** Added to the admitting step per prefix-cache hit token (hashing and lookup; R6). */
+    cachedTokenMs: number;
+    /** Once per request, between dispatch and eligibility to schedule (HTTP, tokenize; R1's r). */
+    requestOverheadMs: number;
   };
   coldStartMs: Record<ColdStartCondition, ColdStartPhases>;
   /** Informational (R6); null until measured. */
@@ -80,6 +89,16 @@ function optNum(o: Record<string, unknown>, key: string, path: string): number |
   const v = o[key];
   if (v === null) return null;
   if (typeof v !== 'number' || !Number.isFinite(v)) fail(`${path}.${key}`, 'a number or null');
+  return v;
+}
+
+/** Optional non-negative number; absent means 0. */
+function optNonNeg(o: Record<string, unknown>, key: string, path: string): number {
+  const v = o[key];
+  if (v === undefined) return 0;
+  if (typeof v !== 'number' || !Number.isFinite(v) || v < 0) {
+    fail(`${path}.${key}`, 'a non-negative number when present');
+  }
   return v;
 }
 
@@ -152,6 +171,9 @@ export function parseCalibration(json: unknown): Calibration {
       computeEfficiency: fraction(cost, 'computeEfficiency', 'costModel'),
       bandwidthEfficiency: fraction(cost, 'bandwidthEfficiency', 'costModel'),
       stepOverheadMs: pos(cost, 'stepOverheadMs', 'costModel'),
+      decodePerSeqMs: optNonNeg(cost, 'decodePerSeqMs', 'costModel'),
+      cachedTokenMs: optNonNeg(cost, 'cachedTokenMs', 'costModel'),
+      requestOverheadMs: optNonNeg(cost, 'requestOverheadMs', 'costModel'),
     },
     coldStartMs: {
       processRestart: phases('processRestart'),

@@ -6,7 +6,10 @@
 //
 //   FLOPs_j  = 2·params·B + 4·layers·hidden·(C0 + j·B)        compute_j = FLOPs_j / (η_c·peak)
 //   bytes_j  = weights + kv·(C0 + B) + kv·B·j                  memory_j  = bytes_j / (η_b·bw)
-//   step_j   = t_o + max(compute_j, memory_j)
+//   step_j   = t_o + decodePerSeqMs·B + max(compute_j, memory_j)
+//
+// The per-sequence term is constant within a span (B is fixed), so it folds into overheadMs and
+// every closed form below stays exact. A decode-only step admits nothing, so no cached-token term.
 //
 // The max of two lines switches at most once. The span stores the line that binds at step 0
 // ("first") and the other ("second"); steps [0, switchStep) follow the first and steps
@@ -31,6 +34,7 @@ export interface DecodeSpan {
   batch: number;
   /** C0: Σ tokens attended by the batch at step 0. Step j attends C0 + j·B. */
   contextTokens: number;
+  /** Per-step time outside the roofline: t_o + decodePerSeqMs·B. */
   overheadMs: number;
   /** Whether compute binds at step 0. */
   firstComputeBound: boolean;
@@ -101,7 +105,7 @@ export function decodeSpan(
 
   out.batch = batch;
   out.contextTokens = contextTokens;
-  out.overheadMs = cal.costModel.stepOverheadMs;
+  out.overheadMs = cal.costModel.stepOverheadMs + cal.costModel.decodePerSeqMs * batch;
   out.firstComputeBound = computeFirst;
   out.firstMs0 = f0;
   out.firstMsSlope = f1;

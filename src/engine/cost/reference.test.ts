@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import raw from '../../../benchmarks/derived/calibration.json';
+import raw from '../../../benchmarks/derived/calibration.provisional.json';
 import { parseCalibration } from '../calibration.ts';
 import { batch1TpotMs, batch1TtftMs } from './reference.ts';
 import { attentionFlopsPerPair, bytesPerMs, linearFlopsPerToken } from './step.ts';

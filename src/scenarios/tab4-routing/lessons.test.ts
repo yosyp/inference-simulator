@@ -1,7 +1,13 @@
 // Tab 4 lesson assertions (00-build §7.3). Paired headless runs of Wednesday 07:00–11:30: every run
 // shares the seed and the morning under affinity and differs only in the policy from 10:30, so
 // arrivals and lengths are identical (keyed draws, K6). Measured over 10:30–11:30. The ranges in
-// the comments are seeds 1–5 on the provisional calibration.
+// the comments are seeds 1–5 on the measured calibration (K36).
+//
+// The TTFT ratios below ask for 1.6×, not the 2× used on the provisional calibration. A warm
+// returning turn now pays 18.9 ms of per-request overhead and 6.2 µs per cached token (~20 ms for a
+// 3,000-token history), costs the provisional model did not have. They add the same ~40 ms to both
+// sides, so affinity's p50 is ~105 ms rather than ~62 ms and the ratio shrinks even though a moved
+// turn still costs 3× a warm one.
 
 import { describe, expect, it } from 'vitest';
 import type { TunableParams } from '../../engine/api.ts';
@@ -54,7 +60,7 @@ describe('tab 4 · routing', { timeout: 20_000 }, () => {
 
     // The turns the tracked analyst sends after Play. By 45 s of play: returning turns that
     // stayed on one replica before the switch, then at least two that moved, each slower to first
-    // token than any before. (Seed 4: 32–60 ms before; 573 and 824 ms after.)
+    // token than any before. (Seed 4: 55–94 ms before; 702 and 1,006 ms after.)
     const r = roundRobin();
     const until = scenario.entry.atMs + 45_000 * scenario.entry.speed;
     const mine = r.records.filter(
@@ -80,20 +86,21 @@ describe('tab 4 · routing', { timeout: 20_000 }, () => {
     expect(moved).toBeGreaterThan(1 - 1 / N - 0.1);
     expect(moved).toBeLessThan(1 - 1 / N + 0.1);
     expect(sessionsMoved(aff.records, LESSON_MS).moved).toBe(0);
-    // Returning-turn hit rate: affinity 0.82–0.875, round-robin 0.50–0.57.
+    // Returning-turn hit rate: affinity 0.81–0.88, round-robin 0.47–0.53.
     expect(hitRatesIn(aff, WINDOW).returning).toBeGreaterThanOrEqual(0.75);
     expect(hitRatesIn(rr, WINDOW).returning).toBeLessThanOrEqual(1 / N + 0.1);
-    // Returning-turn TTFT p50: 2.5–2.9× affinity's.
-    expect(returningP50(rr)).toBeGreaterThanOrEqual(2 * returningP50(aff));
+    // Returning-turn TTFT p50: 1.87–2.06× affinity's (101–110 ms against 188–223 ms).
+    expect(returningP50(rr)).toBeGreaterThanOrEqual(1.6 * returningP50(aff));
   });
 
   it('affinity leaves the replicas less even than least-outstanding, which is no faster', () => {
     const lo = run({ routingPolicy: 'leastOutstanding' });
     const aff = affinity();
-    // Busiest replica over the mean, minus 1: about 4× least-outstanding's.
+    // Busiest replica over the mean, minus 1: 3.6–4.5× least-outstanding's.
     expect(imbalance(aff)).toBeGreaterThan(2 * imbalance(lo));
-    // Least-outstanding balances load but scatters conversations as round-robin does.
-    expect(returningP50(lo)).toBeGreaterThanOrEqual(2 * returningP50(aff));
+    // Least-outstanding balances load but scatters conversations as round-robin does: its
+    // returning-turn TTFT p50 is 1.97–2.17× affinity's.
+    expect(returningP50(lo)).toBeGreaterThanOrEqual(1.6 * returningP50(aff));
   });
 
   it('barely matters for single-turn requests (c1)', () => {
