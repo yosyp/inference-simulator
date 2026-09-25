@@ -36,10 +36,18 @@ jobs:
       - run: pnpm typecheck
       # Ordinary pushes and PRs run the fast tier; prod (the deploy gate) runs the full suite,
       # including the whole-day simulation tests. Run `pnpm verify` locally before pushing.
-      - run: pnpm test:fast
+      - run: pnpm test:coverage # the fast tier, with coverage for Codecov
         if: github.ref != 'refs/heads/prod'
       - run: pnpm test
         if: github.ref == 'refs/heads/prod'
+      # Coverage from the fast tier (the README badge). Only the plain CI run uploads; a deploy
+      # calls this file without secrets. Upload failures never fail CI.
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        if: github.workflow == 'CI' && github.ref != 'refs/heads/prod'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/lcov.info
+          fail_ci_if_error: false
       - run: pnpm build
 
       # Production-CSP smoke test (00-build §7.4, I4). `pnpm e2e` rebuilds dist/

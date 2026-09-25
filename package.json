@@ -2,6 +2,7 @@
   "name": "inference-simulator",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@9.15.0",
   "engines": {
@@ -16,6 +17,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:fast": "TEST_TIER=fast vitest run",
+    "test:coverage": "COVERAGE=1 TEST_TIER=fast vitest run --coverage",
     "test:watch": "vitest",
     "test:oracle:long": "ORACLE_SEEDS=5000 vitest run --project node oracle",
     "e2e": "vite build && playwright test",
@@ -52,6 +54,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "5.0.1",
     "eslint": "^10.11.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.12.0",

@@ -1,0 +1,23 @@
+# Weekly version updates. Security updates (Dependabot alerts) are enabled in the repo settings
+# and open PRs as soon as an advisory lands, independent of this schedule.
+version: 2
+updates:
+  - package-ecosystem: npm # pnpm; reads package.json and pnpm-lock.yaml
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: terraform
+    directories: [/infra/bootstrap, /infra/site]
+    schedule:
+      interval: weekly
+  - package-ecosystem: uv
+    directory: /benchmarks
+    schedule:
+      interval: monthly

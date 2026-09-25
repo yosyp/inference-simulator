@@ -39,6 +39,20 @@ export default defineConfig({
   test: {
     // Headless engine tests run whole simulated hours; many agents share this host, so allow slack.
     testTimeout: 20_000,
+    // `pnpm test:coverage` (CI uploads lcov to Codecov). Tests, fixtures, and the oracle
+    // reference simulator are excluded; they aren't shipped code.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/**/testing/**',
+        'src/fixtures/**',
+        'src/engine/oracle/**',
+        'src/test-setup.ts',
+      ],
+    },
     projects: [
       {
         extends: true,
